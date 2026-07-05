@@ -26,10 +26,12 @@ class VideoProcessor: ObservableObject {
         let outPath = outputURL.path
         
         // SFSpeechRecognizer için en kararlı format: 16kHz, Tek Kanal (Mono), 16-bit PCM WAV
+        // İnsan sesi dışındaki arka plan müzik baslarını ve tiz enstrümanları temizlemek için bandpass (ses) filtresi ekliyoruz
         let args = [
             "-y",
             "-i", inPath,
             "-vn",
+            "-af", "highpass=f=200, lowpass=f=3000",
             "-acodec", "pcm_s16le",
             "-ar", "16000",
             "-ac", "1",
