@@ -7,8 +7,9 @@ import ffmpegkit
 class VideoProcessor: ObservableObject {
     static let shared = VideoProcessor()
     
-    // Uygulama içi fısıltı sonuçları
-    struct WordTimestamp {
+    // Uygulama içi fısıltı sonuçları (Identifiable, Hashable ve Codable uyumlu)
+    struct WordTimestamp: Identifiable, Hashable, Codable {
+        var id = UUID()
         var text: String
         var start: Double
         var end: Double
@@ -50,6 +51,7 @@ class VideoProcessor: ObservableObject {
                 
                 let request = SFSpeechURLRecognitionRequest(url: audioURL)
                 request.shouldReportPartialResults = false
+                request.taskHint = .dictation // Dikte modunu açarak Türkçe konuşma tanıma doğruluğunu artırıyoruz
                 if #available(iOS 13.0, *) {
                     request.requiresOnDeviceRecognition = false // İnternet desteği ile yüksek doğruluk ve tüm cihazlarda çalışma
                 }
@@ -121,16 +123,20 @@ class VideoProcessor: ObservableObject {
         // Deprecated naturalSize yerine load(.naturalSize) kullanımı
         guard let size = try? await track.load(.naturalSize) else { return nil }
         
-        let width = Int(abs(size.width))
-        let height = Int(abs(size.height))
+        let width = Double(abs(size.width))
+        let height = Double(abs(size.height))
+        
+        let aspectRatio = width / height
+        let virtualHeight = 1080
+        let virtualWidth = Int(1080.0 * aspectRatio)
         
         let familyName = getFontFamilyName(for: fontName)
         
         var assContent = """
         [Script Info]
         ScriptType: v4.00+
-        PlayResX: \(width)
-        PlayResY: \(height)
+        PlayResX: \(virtualWidth)
+        PlayResY: \(virtualHeight)
         
         [V4+ Styles]
         Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding

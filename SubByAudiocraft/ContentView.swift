@@ -1,5 +1,12 @@
 import SwiftUI
 import PhotosUI
+import AVKit
+
+enum AppStep {
+    case selectVideo
+    case editSubtitles
+    case processing
+}
 
 struct ContentView: View {
     @State private var selectedItem: PhotosPickerItem? = nil
@@ -7,6 +14,13 @@ struct ContentView: View {
     @State private var isProcessing: Bool = false
     @State private var segments: [String] = [] // Will hold Whisper results
     @State private var isFontListExpanded: Bool = false
+    
+    // Workflow States
+    @State private var currentStep: AppStep = .selectVideo
+    @State private var words: [VideoProcessor.WordTimestamp] = []
+    @State private var videoURL: URL? = nil
+    @State private var audioURL: URL? = nil
+    @State private var player: AVPlayer? = nil
     
     // Config
     @State private var fontName: String = "Anton-Regular"
@@ -48,32 +62,84 @@ struct ContentView: View {
                         .multilineTextAlignment(.center)
                         .padding(.top)
                     
-                    // 1. Video Seçimi
-                    VStack(alignment: .leading, spacing: 16) {
-                        Text("1. Video ve Ayarlar")
-                            .font(.headline)
+                    if currentStep == .selectVideo {
+                        // --- ADIM 1: VİDEO SEÇİMİ VE STİL AYARLARI ---
                         
-                        PhotosPicker(selection: $selectedItem, matching: .videos, photoLibrary: .shared()) {
-                            HStack {
-                                Image(systemName: "video.fill")
-                                Text(selectedItem == nil ? "Galeriden Video Seç" : "Video Seçildi ✓")
-                            }
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.blue.opacity(0.8))
-                            .foregroundColor(.white)
-                            .cornerRadius(12)
-                        }
-                        .onChange(of: selectedItem) { newValue in
-                            if newValue != nil {
-                                statusMessage = "Video yüklendi. Ayarları yapıp analiz edebilirsiniz."
-                            }
-                        }
-                        
-                        Divider()
-                        
-                        // Ayarlar
                         VStack(alignment: .leading, spacing: 16) {
+                            Text("1. Video Seçimi")
+                                .font(.headline)
+                            
+                            PhotosPicker(selection: $selectedItem, matching: .videos, photoLibrary: .shared()) {
+                                HStack {
+                                    Image(systemName: "video.fill")
+                                    Text(selectedItem == nil ? "Galeriden Video Seç" : "Video Seçildi ✓")
+                                }
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                                .background(Color.blue.opacity(0.8))
+                                .foregroundColor(.white)
+                                .cornerRadius(12)
+                            }
+                            .onChange(of: selectedItem) { newValue in
+                                if newValue != nil {
+                                    statusMessage = "Video yüklendi. Ayarları yapıp analiz edebilirsiniz."
+                                    loadAndPreviewVideo()
+                                }
+                            }
+                        }
+                        .padding()
+                        .background(Color(UIColor.secondarySystemBackground))
+                        .cornerRadius(16)
+                        
+                        // Canlı Ön İzleme Paneli (Eğer video seçildiyse gösterilir)
+                        if player != nil {
+                            VStack(alignment: .leading, spacing: 12) {
+                                Text("Canlı Stil Ön İzlemesi")
+                                    .font(.headline)
+                                
+                                GeometryReader { geo in
+                                    ZStack(alignment: .bottom) {
+                                        if let player = player {
+                                            VideoPlayer(player: player)
+                                                .onAppear {
+                                                    player.isMuted = true
+                                                    player.play()
+                                                    // Döngüsel oynatma
+                                                    NotificationCenter.default.addObserver(forName: .AVPlayerItemDidPlayToEndTime, object: player.currentItem, queue: .main) { _ in
+                                                        player.seek(to: .zero)
+                                                        player.play()
+                                                    }
+                                                }
+                                                .onDisappear {
+                                                    player.pause()
+                                                }
+                                        }
+                                        
+                                        // Dinamik SwiftUI Altyazı Bindings (1080p referans yüksekliğine göre ölçekleme)
+                                        Text("Altyazı Ön İzleme")
+                                            .font(.custom(fontName, size: CGFloat(fontSize) * (geo.size.height / 1080.0)))
+                                            .foregroundColor(.white)
+                                            .padding(.horizontal, 10)
+                                            .padding(.vertical, 5)
+                                            .background(Color.black.opacity(0.6))
+                                            .cornerRadius(6)
+                                            .padding(.bottom, CGFloat(marginV) * (geo.size.height / 1080.0))
+                                    }
+                                }
+                                .frame(height: 280)
+                                .cornerRadius(12)
+                                .clipped()
+                            }
+                            .padding()
+                            .background(Color(UIColor.secondarySystemBackground))
+                            .cornerRadius(16)
+                        }
+                        
+                        // Stil Ayarları Paneli
+                        VStack(alignment: .leading, spacing: 16) {
+                            Text("2. Altyazı Tasarım Ayarları")
+                                .font(.headline)
+                            
                             // Font Seçimi (Aşağı açılır şık ve ön izlemeli özel liste)
                             VStack(alignment: .leading, spacing: 8) {
                                 Text("Yazı Tipi:")
@@ -119,7 +185,7 @@ struct ContentView: View {
                                                 }
                                             }
                                         }
-                                        .frame(maxHeight: 250) // Liste boyutu çok uzamasın diye sınırlıyoruz
+                                        .frame(maxHeight: 200)
                                     }
                                     .cornerRadius(10)
                                     .overlay(
@@ -145,74 +211,235 @@ struct ContentView: View {
                                     .accentColor(.purple)
                             }
                         }
-                    }
-                    .padding()
-                    .background(Color(UIColor.secondarySystemBackground))
-                    .cornerRadius(16)
-                    
-                    // 2. Analiz Butonu
-                    Button(action: startAnalysis) {
-                        if isProcessing {
-                            ProgressView()
-                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                                .frame(maxWidth: .infinity)
-                                .padding()
-                                .background(Color.purple)
-                                .cornerRadius(12)
-                        } else {
-                            Text("Videoyu Analiz Et (Whisper)")
-                                .fontWeight(.bold)
-                                .frame(maxWidth: .infinity)
-                                .padding()
-                                .background(Color.purple)
-                                .foregroundColor(.white)
-                                .cornerRadius(12)
+                        .padding()
+                        .background(Color(UIColor.secondarySystemBackground))
+                        .cornerRadius(16)
+                        
+                        // Analiz Başlatma Butonu
+                        Button(action: startAnalysis) {
+                            if isProcessing {
+                                ProgressView()
+                                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                    .frame(maxWidth: .infinity)
+                                    .padding()
+                                    .background(Color.purple)
+                                    .cornerRadius(12)
+                            } else {
+                                Text("Videoyu Analiz Et (Whisper)")
+                                    .fontWeight(.bold)
+                                    .frame(maxWidth: .infinity)
+                                    .padding()
+                                    .background(Color.purple)
+                                    .foregroundColor(.white)
+                                    .cornerRadius(12)
+                            }
                         }
-                    }
-                    .disabled(selectedItem == nil || isProcessing)
-                    
-                    // Durum
-                    Text(statusMessage)
-                        .font(.subheadline)
-                        .foregroundColor(.gray)
-                        .multilineTextAlignment(.center)
-                        .textSelection(.enabled)
-                    
-                    if statusMessage.hasPrefix("Hata:") {
-                        VStack(spacing: 12) {
-                            Button(action: {
-                                UIPasteboard.general.string = statusMessage
-                            }) {
-                                HStack {
-                                    Image(systemName: "doc.on.doc.fill")
-                                    Text("Hata Logunu Kopyala")
+                        .disabled(selectedItem == nil || isProcessing)
+                        
+                    } else if currentStep == .editSubtitles {
+                        // --- ADIM 2: İNTERAKTİF SÖZ DÜZENLEYİCİ VE YAZMA ---
+                        
+                        // Üstte Canlı Ön İzleme Her Zaman Aktif
+                        if player != nil {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("Ön İzleme ve Tasarım Sürgüsü")
+                                    .font(.headline)
+                                
+                                GeometryReader { geo in
+                                    ZStack(alignment: .bottom) {
+                                        if let player = player {
+                                            VideoPlayer(player: player)
+                                                .onAppear {
+                                                    player.isMuted = true
+                                                    player.play()
+                                                }
+                                        }
+                                        
+                                        Text("Altyazı Ön İzleme")
+                                            .font(.custom(fontName, size: CGFloat(fontSize) * (geo.size.height / 1080.0)))
+                                            .foregroundColor(.white)
+                                            .padding(.horizontal, 10)
+                                            .padding(.vertical, 5)
+                                            .background(Color.black.opacity(0.6))
+                                            .cornerRadius(6)
+                                            .padding(.bottom, CGFloat(marginV) * (geo.size.height / 1080.0))
+                                    }
                                 }
-                                .font(.subheadline)
-                                .fontWeight(.semibold)
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 8)
-                                .background(Color.blue)
-                                .foregroundColor(.white)
-                                .cornerRadius(8)
+                                .frame(height: 200)
+                                .cornerRadius(12)
+                                .clipped()
+                                
+                                // Hızlı Tasarım Kaydırıcıları (Dikey konumu ön izlerken düzeltmek için)
+                                HStack(spacing: 12) {
+                                    VStack(alignment: .leading) {
+                                        Text("Boyut: \(Int(fontSize))").font(.caption).fontWeight(.semibold)
+                                        Slider(value: $fontSize, in: 30...150, step: 2).accentColor(.purple)
+                                    }
+                                    VStack(alignment: .leading) {
+                                        Text("Konum: \(Int(marginV))").font(.caption).fontWeight(.semibold)
+                                        Slider(value: $marginV, in: 0...500, step: 5).accentColor(.purple)
+                                    }
+                                }
+                                .padding(.top, 4)
+                            }
+                            .padding()
+                            .background(Color(UIColor.secondarySystemBackground))
+                            .cornerRadius(16)
+                        }
+                        
+                        // Söz Düzeltme Listesi
+                        VStack(alignment: .leading, spacing: 16) {
+                            HStack {
+                                Text("3. Sözleri Düzenleyin")
+                                    .font(.headline)
+                                Spacer()
+                                Text("\(words.count) Kelime").font(.caption).foregroundColor(.gray)
                             }
                             
-                            if let fileURL = logFileURL {
-                                ShareLink(item: fileURL) {
+                            ScrollView {
+                                VStack(spacing: 12) {
+                                    ForEach(0..<words.count, id: \.self) { index in
+                                        HStack(spacing: 8) {
+                                            // Kelime Giriş Alanı
+                                            TextField("Kelime", text: $words[index].text)
+                                                .textFieldStyle(RoundedBorderTextFieldStyle())
+                                                .font(.body)
+                                            
+                                            // Süre Bilgisi ve Kontrolleri
+                                            VStack(spacing: 2) {
+                                                HStack(spacing: 4) {
+                                                    Button(action: { if words[index].start > 0.1 { words[index].start -= 0.1 } }) {
+                                                        Image(systemName: "minus.circle").font(.caption).foregroundColor(.gray)
+                                                    }
+                                                    Text(String(format: "%.1fs", words[index].start))
+                                                        .font(.system(.caption, design: .monospaced))
+                                                        .frame(width: 40)
+                                                    Button(action: { words[index].start += 0.1 }) {
+                                                        Image(systemName: "plus.circle").font(.caption).foregroundColor(.gray)
+                                                    }
+                                                }
+                                                HStack(spacing: 4) {
+                                                    Button(action: { if words[index].end > 0.1 { words[index].end -= 0.1 } }) {
+                                                        Image(systemName: "minus.circle").font(.caption).foregroundColor(.gray)
+                                                    }
+                                                    Text(String(format: "%.1fs", words[index].end))
+                                                        .font(.system(.caption, design: .monospaced))
+                                                        .frame(width: 40)
+                                                    Button(action: { words[index].end += 0.1 }) {
+                                                        Image(systemName: "plus.circle").font(.caption).foregroundColor(.gray)
+                                                    }
+                                                }
+                                            }
+                                            
+                                            // Silme Butonu
+                                            Button(action: {
+                                                words.remove(at: index)
+                                            }) {
+                                                Image(systemName: "trash")
+                                                    .foregroundColor(.red)
+                                                    .padding(.horizontal, 4)
+                                            }
+                                        }
+                                        .padding(8)
+                                        .background(Color(UIColor.tertiarySystemBackground))
+                                        .cornerRadius(8)
+                                    }
+                                }
+                            }
+                            .frame(maxHeight: 300)
+                        }
+                        .padding()
+                        .background(Color(UIColor.secondarySystemBackground))
+                        .cornerRadius(16)
+                        
+                        // İşlem Butonları
+                        VStack(spacing: 12) {
+                            Button(action: burnFinalVideo) {
+                                HStack {
+                                    Image(systemName: "checkmark.circle.fill")
+                                    Text("Altyazıları Videoya Göm ve Kaydet")
+                                        .fontWeight(.bold)
+                                }
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                                .background(Color.purple)
+                                .foregroundColor(.white)
+                                .cornerRadius(12)
+                            }
+                            
+                            Button(action: resetToImport) {
+                                Text("Geri Dön (Videoyu Değiştir)")
+                                    .font(.subheadline)
+                                    .foregroundColor(.gray)
+                            }
+                        }
+                        
+                    } else if currentStep == .processing {
+                        // --- ADIM 3: İŞLEM SÜRECİ EKRANI ---
+                        VStack(spacing: 24) {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: .purple))
+                                .scaleEffect(2.0)
+                            
+                            Text("İşlem Yapılıyor...")
+                                .font(.headline)
+                            
+                            Text(statusMessage)
+                                .font(.subheadline)
+                                .foregroundColor(.gray)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 80)
+                        .background(Color(UIColor.secondarySystemBackground))
+                        .cornerRadius(16)
+                    }
+                    
+                    // Alt Durum Mesajı
+                    if currentStep != .processing {
+                        Text(statusMessage)
+                            .font(.subheadline)
+                            .foregroundColor(.gray)
+                            .multilineTextAlignment(.center)
+                            .textSelection(.enabled)
+                        
+                        if statusMessage.hasPrefix("Hata:") {
+                            VStack(spacing: 12) {
+                                Button(action: {
+                                    UIPasteboard.general.string = statusMessage
+                                }) {
                                     HStack {
-                                        Image(systemName: "folder.fill")
-                                        Text("Dosyalara Kaydet / Paylaş")
+                                        Image(systemName: "doc.on.doc.fill")
+                                        Text("Hata Logunu Kopyala")
                                     }
                                     .font(.subheadline)
                                     .fontWeight(.semibold)
                                     .padding(.horizontal, 16)
                                     .padding(.vertical, 8)
-                                    .background(Color.green)
+                                    .background(Color.blue)
                                     .foregroundColor(.white)
                                     .cornerRadius(8)
                                 }
+                                
+                                if let fileURL = logFileURL {
+                                    ShareLink(item: fileURL) {
+                                        HStack {
+                                            Image(systemName: "folder.fill")
+                                            Text("Dosyalara Kaydet / Paylaş")
+                                        }
+                                        .font(.subheadline)
+                                        .fontWeight(.semibold)
+                                        .padding(.horizontal, 16)
+                                        .padding(.vertical, 8)
+                                        .background(Color.green)
+                                        .foregroundColor(.white)
+                                        .cornerRadius(8)
+                                    }
+                                }
                             }
+                            .padding(.top, 8)
                         }
-                        .padding(.top, 8)
                     }
                     
                 }
@@ -222,42 +449,55 @@ struct ContentView: View {
         }
     }
     
-    func startAnalysis() {
+    // Galeriden seçilen videoyu kopyalayıp player'a yerleştirir
+    func loadAndPreviewVideo() {
         guard let item = selectedItem else { return }
-        isProcessing = true
-        statusMessage = "Video dosyası hazırlanıyor..."
         
         item.loadTransferable(type: Movie.self) { result in
             DispatchQueue.main.async {
                 switch result {
                 case .success(let movie?):
-                    self.processVideo(url: movie.url)
+                    self.videoURL = movie.url
+                    self.player = AVPlayer(url: movie.url)
+                    self.player?.isMuted = true
                 case .success(nil), .failure(_):
-                    self.statusMessage = "Video yüklenirken hata oluştu."
-                    self.isProcessing = false
+                    self.statusMessage = "Ön izleme yüklenirken hata oluştu."
                 }
             }
         }
     }
     
-    func processVideo(url: URL) {
-        statusMessage = "Sesi ayrıştırıyor..."
+    // Adım 1'den Adım 2'ye geçişi başlatır (Sesi çıkarır ve analiz eder)
+    func startAnalysis() {
+        guard let url = videoURL else {
+            statusMessage = "Öncelikle video seçmelisiniz."
+            return
+        }
+        isProcessing = true
+        statusMessage = "Video dosyası hazırlanıyor..."
+        currentStep = .processing
+        
         VideoProcessor.shared.extractAudio(from: url) { audioURL in
             guard let audioURL = audioURL else {
                 DispatchQueue.main.async {
                     self.statusMessage = "Hata: Ses çıkarılamadı."
                     self.isProcessing = false
-                    VideoProcessor.shared.deleteFile(at: url) // Orijinal geçici video kopyasını sil
+                    self.currentStep = .selectVideo
+                    VideoProcessor.shared.deleteFile(at: url)
                 }
                 return
             }
             
+            self.audioURL = audioURL
+            
             DispatchQueue.main.async { self.statusMessage = "Yapay Zeka sözleri analiz ediyor..." }
+            
             VideoProcessor.shared.runSpeechRecognition(audioURL: audioURL) { words, speechError in
                 if let speechError = speechError {
                     DispatchQueue.main.async {
                         self.statusMessage = "Hata: \(speechError)"
                         self.isProcessing = false
+                        self.currentStep = .selectVideo
                         VideoProcessor.shared.deleteFile(at: audioURL)
                         VideoProcessor.shared.deleteFile(at: url)
                     }
@@ -268,63 +508,108 @@ struct ContentView: View {
                     DispatchQueue.main.async {
                         self.statusMessage = "Hata: Videoda net bir konuşma bulunamadı."
                         self.isProcessing = false
+                        self.currentStep = .selectVideo
                         VideoProcessor.shared.deleteFile(at: audioURL)
                         VideoProcessor.shared.deleteFile(at: url)
                     }
                     return
                 }
                 
-                DispatchQueue.main.async { self.statusMessage = "Altyazılar tasarlanıyor..." }
-                
-                Task {
-                    let assURL = await VideoProcessor.shared.generateASS(words: words, fontName: fontName, fontSize: Int(fontSize), marginV: Int(marginV), videoURL: url)
-                    
-                    guard let assURL = assURL else {
-                        DispatchQueue.main.async {
-                            self.statusMessage = "Hata: Altyazı dosyası oluşturulamadı."
-                            self.isProcessing = false
-                            VideoProcessor.shared.deleteFile(at: audioURL)
-                            VideoProcessor.shared.deleteFile(at: url)
-                        }
-                        return
-                    }
-                    
+                DispatchQueue.main.async {
+                    self.words = words
+                    self.isProcessing = false
+                    self.currentStep = .editSubtitles
+                    self.statusMessage = "Ses başarıyla yazıya çevrildi. Kelimeleri düzenleyip stili ayarlayabilirsiniz."
+                }
+            }
+        }
+    }
+    
+    // Adım 2'deki düzenlenmiş verilerle videoyu işler ve galeriye kaydeder
+    func burnFinalVideo() {
+        guard let url = videoURL, let audioURL = audioURL else {
+            statusMessage = "Hata: Video veya ses dosyası bulunamadı."
+            return
+        }
+        
+        currentStep = .processing
+        statusMessage = "Altyazı dosyası hazırlanıyor..."
+        isProcessing = true
+        
+        // Video oynatıcıyı durdur
+        player?.pause()
+        
+        Task {
+            let actualFontName = fontName
+            let assURL = await VideoProcessor.shared.generateASS(words: words, fontName: actualFontName, fontSize: Int(fontSize), marginV: Int(marginV), videoURL: url)
+            
+            guard let assURL = assURL else {
+                DispatchQueue.main.async {
+                    self.statusMessage = "Hata: Altyazı dosyası oluşturulamadı."
+                    self.isProcessing = false
+                    self.currentStep = .editSubtitles
+                }
+                return
+            }
+            
+            DispatchQueue.main.async {
+                self.statusMessage = "Altyazılar videoya gömülüyor (Bu işlem cihaz hızına göre biraz sürebilir)..."
+            }
+            
+            VideoProcessor.shared.burnSubtitles(videoURL: url, assURL: assURL) { outputURL, errorMessage in
+                guard let outputURL = outputURL else {
                     DispatchQueue.main.async {
-                        self.statusMessage = "Altyazılar videoya gömülüyor (Bu işlem cihaz hızına göre biraz sürebilir)..."
+                        self.statusMessage = "Hata: \(errorMessage ?? "Bilinmeyen FFmpeg hatası")"
+                        self.isProcessing = false
+                        self.currentStep = .editSubtitles
+                        VideoProcessor.shared.deleteFile(at: assURL)
                     }
-                    
-                    VideoProcessor.shared.burnSubtitles(videoURL: url, assURL: assURL) { outputURL, errorMessage in
-                        guard let outputURL = outputURL else {
-                            DispatchQueue.main.async {
-                                self.statusMessage = "Hata: \(errorMessage ?? "Bilinmeyen FFmpeg hatası")"
-                                self.isProcessing = false
-                                VideoProcessor.shared.deleteFile(at: audioURL)
-                                VideoProcessor.shared.deleteFile(at: assURL)
-                                VideoProcessor.shared.deleteFile(at: url)
-                            }
-                            return
+                    return
+                }
+                
+                DispatchQueue.main.async { self.statusMessage = "Galeriye kaydediliyor..." }
+                
+                VideoProcessor.shared.saveToGallery(videoURL: outputURL) { success, galleryError in
+                    DispatchQueue.main.async {
+                        self.isProcessing = false
+                        if success {
+                            self.statusMessage = "Tebrikler! Altyazılı video galerinize başarıyla kaydedildi. 🎉"
+                            self.currentStep = .selectVideo
+                            self.selectedItem = nil
+                            self.player = nil
+                            self.words = []
+                        } else {
+                            self.statusMessage = "Hata: \(galleryError ?? "Galeriye kaydedilemedi.")"
+                            self.currentStep = .editSubtitles
                         }
                         
-                        DispatchQueue.main.async { self.statusMessage = "Galeriye kaydediliyor..." }
-                        VideoProcessor.shared.saveToGallery(videoURL: outputURL) { success, galleryError in
-                            DispatchQueue.main.async {
-                                self.isProcessing = false
-                                if success {
-                                    self.statusMessage = "Tebrikler! Altyazılı video galerinize başarıyla kaydedildi. 🎉"
-                                } else {
-                                    self.statusMessage = "Hata: \(galleryError ?? "Galeriye kaydedilemedi.")"
-                                }
-                                // İşlem bitsin veya hata versin, tüm geçici dosyaları siliyoruz (Çöp toplama)
-                                VideoProcessor.shared.deleteFile(at: audioURL)
-                                VideoProcessor.shared.deleteFile(at: assURL)
-                                VideoProcessor.shared.deleteFile(at: url)
-                                VideoProcessor.shared.deleteFile(at: outputURL)
-                            }
-                        }
+                        // Garbage Collection (Tüm geçici dosyaları temizleme)
+                        VideoProcessor.shared.deleteFile(at: audioURL)
+                        VideoProcessor.shared.deleteFile(at: assURL)
+                        VideoProcessor.shared.deleteFile(at: url)
+                        VideoProcessor.shared.deleteFile(at: outputURL)
+                        
+                        self.audioURL = nil
+                        self.videoURL = nil
                     }
                 }
             }
         }
+    }
+    
+    // Adım 2'den vazgeçip sıfırlayarak geri döner
+    func resetToImport() {
+        player?.pause()
+        if let url = videoURL { VideoProcessor.shared.deleteFile(at: url) }
+        if let aURL = audioURL { VideoProcessor.shared.deleteFile(at: aURL) }
+        
+        self.videoURL = nil
+        self.audioURL = nil
+        self.player = nil
+        self.selectedItem = nil
+        self.words = []
+        self.currentStep = .selectVideo
+        self.statusMessage = "Seçim sıfırlandı. Yeni video seçebilirsiniz."
     }
 }
 
