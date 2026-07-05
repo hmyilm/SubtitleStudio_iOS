@@ -162,7 +162,7 @@ class VideoProcessor: ObservableObject {
                 }
             }
             
-            assContent += "Dialogue: 0,\(startStr),\(endStr),Default,,0,0,0,,\(effectText)\\N\n"
+            assContent += "Dialogue: 0,\(startStr),\(endStr),Default,,0,0,0,,\(effectText)\n"
         }
         
         let assURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".ass")

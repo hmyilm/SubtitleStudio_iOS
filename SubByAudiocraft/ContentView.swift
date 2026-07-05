@@ -250,9 +250,15 @@ struct Movie: Transferable {
         FileRepresentation(contentType: .movie) { movie in
             SentTransferredFile(movie.url)
         } importing: { received in
+            let isSecurityScoped = received.file.startAccessingSecurityScopedResource()
+            defer {
+                if isSecurityScoped {
+                    received.file.stopAccessingSecurityScopedResource()
+                }
+            }
             let copy = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(received.file.lastPathComponent)
             if FileManager.default.fileExists(atPath: copy.path) {
-                try FileManager.default.removeItem(at: copy)
+                try? FileManager.default.removeItem(at: copy)
             }
             try FileManager.default.copyItem(at: received.file, to: copy)
             return Self.init(url: copy)
