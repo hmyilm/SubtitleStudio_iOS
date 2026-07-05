@@ -9,6 +9,8 @@ enum AppStep {
 }
 
 struct ContentView: View {
+    private let logoYellow = Color(red: 254/255, green: 204/255, blue: 47/255)
+    
     @State private var selectedItem: PhotosPickerItem? = nil
     @State private var statusMessage: String = "Video Seçin"
     @State private var isProcessing: Bool = false
@@ -176,7 +178,7 @@ struct ContentView: View {
                                                                 Spacer()
                                                                 if fontName == font {
                                                                     Image(systemName: "checkmark")
-                                                                        .foregroundColor(.purple)
+                                                                        .foregroundColor(logoYellow)
                                                                 }
                                                             }
                                                             .padding()
@@ -201,7 +203,7 @@ struct ContentView: View {
                                     Text("Yazı Büyüklüğü: \(Int(fontSize))")
                                         .fontWeight(.semibold)
                                     Slider(value: $fontSize, in: 30...150, step: 1)
-                                        .accentColor(.purple)
+                                        .accentColor(logoYellow)
                                 }
                                 
                                 // Konum Seçimi
@@ -209,7 +211,7 @@ struct ContentView: View {
                                     Text("Aşağı/Yukarı Konum: \(Int(marginV))")
                                         .fontWeight(.semibold)
                                     Slider(value: $marginV, in: 30...950, step: 5)
-                                        .accentColor(.purple)
+                                        .accentColor(logoYellow)
                                 }
                             }
                             .padding()
@@ -253,11 +255,11 @@ struct ContentView: View {
                                     HStack(spacing: 12) {
                                         VStack(alignment: .leading) {
                                             Text("Boyut: \(Int(fontSize))").font(.caption).fontWeight(.semibold)
-                                            Slider(value: $fontSize, in: 30...150, step: 2).accentColor(.purple)
+                                            Slider(value: $fontSize, in: 30...150, step: 2).accentColor(logoYellow)
                                         }
                                         VStack(alignment: .leading) {
                                             Text("Konum: \(Int(marginV))").font(.caption).fontWeight(.semibold)
-                                            Slider(value: $marginV, in: 30...950, step: 5).accentColor(.purple)
+                                            Slider(value: $marginV, in: 30...950, step: 5).accentColor(logoYellow)
                                         }
                                     }
                                     .padding(.top, 4)
@@ -287,7 +289,7 @@ struct ContentView: View {
                                         }
                                         .font(.caption)
                                         .fontWeight(.bold)
-                                        .foregroundColor(.purple)
+                                        .foregroundColor(logoYellow)
                                     }
                                     .padding(.trailing, 4)
                                     
@@ -354,7 +356,7 @@ struct ContentView: View {
                             // --- ADIM 3: İŞLEM SÜRECİ EKRANI ---
                             VStack(spacing: 24) {
                                 ProgressView()
-                                    .progressViewStyle(CircularProgressViewStyle(tint: .purple))
+                                    .progressViewStyle(CircularProgressViewStyle(tint: logoYellow))
                                     .scaleEffect(2.0)
                                 
                                 Text("İşlem Yapılıyor...")
@@ -432,8 +434,8 @@ struct ContentView: View {
                                     .fontWeight(.bold)
                                     .frame(maxWidth: .infinity)
                                     .padding()
-                                    .background(selectedItem == nil ? Color.gray : Color.purple)
-                                    .foregroundColor(.white)
+                                    .background(selectedItem == nil ? Color.gray.opacity(0.3) : logoYellow)
+                                    .foregroundColor(selectedItem == nil ? .gray : .black)
                                     .cornerRadius(12)
                             }
                             .disabled(selectedItem == nil || isProcessing)
@@ -446,11 +448,12 @@ struct ContentView: View {
                                     Image(systemName: "checkmark.circle.fill")
                                     Text("Altyazıları Videoya Göm ve Kaydet")
                                         .fontWeight(.bold)
+                                    
                                 }
                                 .frame(maxWidth: .infinity)
                                 .padding()
-                                .background(Color.purple)
-                                .foregroundColor(.white)
+                                .background(logoYellow)
+                                .foregroundColor(.black)
                                 .cornerRadius(12)
                             }
                             .padding(.horizontal)
