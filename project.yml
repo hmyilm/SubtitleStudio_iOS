@@ -11,12 +11,12 @@ targets:
     platform: iOS
     deploymentTarget: "16.0"
     version: 1.2.0
-    build: 15
+    build: 16
     settings:
       ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
       PRODUCT_BUNDLE_IDENTIFIER: com.hmyilm.SubByAudiocraft
       MARKETING_VERSION: "1.2.0"
-      CURRENT_PROJECT_VERSION: "15"
+      CURRENT_PROJECT_VERSION: "16"
     sources: [SubByAudiocraft]
     dependencies:
       - package: WhisperKit
@@ -43,7 +43,7 @@ targets:
         CFBundleIconName: AppIcon
         CFBundleDisplayName: Sub by Audiocraft
         CFBundleShortVersionString: "1.2.0"
-        CFBundleVersion: "15"
+        CFBundleVersion: "16"
         ITSAppUsesNonExemptEncryption: false
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
@@ -57,3 +57,7 @@ targets:
           - UIInterfaceOrientationLandscapeRight
         NSPhotoLibraryUsageDescription: "Videolarınızı işleyebilmek için fotoğraf galerinize erişmemiz gerekiyor."
         NSPhotoLibraryAddUsageDescription: "Oluşturulan altyazılı videoyu galerinize kaydetmek için izin gerekiyor."
+        # Uygulama kamera/mikrofon KULLANMAZ; FFmpeg kütüphanesi bu API'lere referans
+        # verdiği için Apple bu açıklama metinlerini zorunlu tutuyor (ITMS-90683).
+        NSCameraUsageDescription: "Uygulama kamerayı kullanmaz. Bu izin metni, video işleme motorunun (FFmpeg) sistem gereksinimleri nedeniyle bulunmaktadır."
+        NSMicrophoneUsageDescription: "Uygulama mikrofonu kullanmaz. Bu izin metni, video işleme motorunun (FFmpeg) sistem gereksinimleri nedeniyle bulunmaktadır."
