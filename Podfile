@@ -2,5 +2,5 @@ platform :ios, '16.0'
 use_frameworks!
 
 target 'SubtitleStudio' do
-  pod 'ffmpeg-kit-ios-video', '~> 6.0'
+  pod 'ffmpeg-kit-ios-full', :podspec => 'https://raw.githubusercontent.com/luthviar/ffmpeg-kit-ios-full/main/ffmpeg-kit-ios-full.podspec'
 end
