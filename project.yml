@@ -32,3 +32,4 @@ targets:
         NSPhotoLibraryAddUsageDescription: "Oluşturulan altyazılı videoyu galerinize kaydetmek için izin gerekiyor."
         NSSpeechRecognitionUsageDescription: "Videodaki sözleri otomatik yakalamak için ses tanıma izni gereklidir."
         NSMicrophoneUsageDescription: "Ses tanıma algoritması için gereklidir."
+        NSCameraUsageDescription: "Uygulama altyapısı, video işleme motoru için kamera erişim iznine ihtiyaç duymaktadır."
