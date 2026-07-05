@@ -126,16 +126,95 @@ struct ContentView: View {
     }
     
     func startAnalysis() {
-        guard let _ = selectedItem else { return }
+        guard let item = selectedItem else { return }
         isProcessing = true
-        statusMessage = "Yapay zeka analiz ediyor... (Bu işlem cihazda yapılıyor, internet gerektirmez)"
+        statusMessage = "Video dosyası hazırlanıyor..."
         
-        // Burada WhisperManager ve VideoProcessor devreye girecek.
-        // Şimdilik simüle ediyoruz:
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-            self.isProcessing = false
-            self.statusMessage = "Analiz bitti! Sözleri düzenleyebilirsiniz."
-            self.segments = ["Test kelimesi 1", "Test kelimesi 2"]
+        item.loadTransferable(type: Movie.self) { result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success(let movie?):
+                    self.processVideo(url: movie.url)
+                case .success(nil), .failure(_):
+                    self.statusMessage = "Video yüklenirken hata oluştu."
+                    self.isProcessing = false
+                }
+            }
+        }
+    }
+    
+    func processVideo(url: URL) {
+        statusMessage = "Sesi ayrıştırıyor..."
+        VideoProcessor.shared.extractAudio(from: url) { audioURL in
+            guard let audioURL = audioURL else {
+                DispatchQueue.main.async {
+                    self.statusMessage = "Hata: Ses çıkarılamadı."
+                    self.isProcessing = false
+                }
+                return
+            }
+            
+            DispatchQueue.main.async { self.statusMessage = "Yapay Zeka sözleri analiz ediyor..." }
+            VideoProcessor.shared.runSpeechRecognition(audioURL: audioURL) { words in
+                guard !words.isEmpty else {
+                    DispatchQueue.main.async {
+                        self.statusMessage = "Hata: Videoda net bir konuşma bulunamadı."
+                        self.isProcessing = false
+                    }
+                    return
+                }
+                
+                DispatchQueue.main.async { self.statusMessage = "Altyazılar tasarlanıyor..." }
+                let actualFontName = fontName.replacingOccurrences(of: "-Bold", with: "").replacingOccurrences(of: "-Heavy", with: "")
+                guard let assURL = VideoProcessor.shared.generateASS(words: words, fontName: actualFontName, fontSize: Int(fontSize), marginV: Int(marginV), videoURL: url) else {
+                    DispatchQueue.main.async {
+                        self.statusMessage = "Hata: Altyazı dosyası oluşturulamadı."
+                        self.isProcessing = false
+                    }
+                    return
+                }
+                
+                DispatchQueue.main.async { self.statusMessage = "Altyazılar videoya gömülüyor (Bu işlem cihaz hızına göre biraz sürebilir)..." }
+                VideoProcessor.shared.burnSubtitles(videoURL: url, assURL: assURL) { outputURL in
+                    guard let outputURL = outputURL else {
+                        DispatchQueue.main.async {
+                            self.statusMessage = "Hata: Video işlenirken sorun oluştu."
+                            self.isProcessing = false
+                        }
+                        return
+                    }
+                    
+                    DispatchQueue.main.async { self.statusMessage = "Galeriye kaydediliyor..." }
+                    VideoProcessor.shared.saveToGallery(videoURL: outputURL) { success in
+                        DispatchQueue.main.async {
+                            self.isProcessing = false
+                            if success {
+                                self.statusMessage = "Tebrikler! Altyazılı video galerinize başarıyla kaydedildi. 🎉"
+                            } else {
+                                self.statusMessage = "Hata: Galeriye kaydedilemedi. Lütfen fotoğraf izinlerini kontrol edin."
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Fotoğraf kütüphanesinden videoyu geçici klasöre almak için yardımcı yapı
+struct Movie: Transferable {
+    let url: URL
+    
+    static var transferRepresentation: some TransferRepresentation {
+        FileRepresentation(contentType: .movie) { movie in
+            SentTransferredFile(movie.url)
+        } importing: { received in
+            let copy = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(received.file.lastPathComponent)
+            if FileManager.default.fileExists(atPath: copy.path) {
+                try FileManager.default.removeItem(at: copy)
+            }
+            try FileManager.default.copyItem(at: received.file, to: copy)
+            return Self.init(url: copy)
         }
     }
 }
