@@ -57,7 +57,7 @@ class VideoProcessor: ObservableObject {
             let request = SFSpeechURLRecognitionRequest(url: audioURL)
             request.shouldReportPartialResults = false
             if #available(iOS 13.0, *) {
-                request.requiresOnDeviceRecognition = true // İnternetsiz çalışma (cihaz destekliyorsa)
+                request.requiresOnDeviceRecognition = false // İnternet desteği ile yüksek doğruluk ve tüm cihazlarda çalışma
             }
             
             recognizer.recognitionTask(with: request) { result, error in
@@ -82,13 +82,43 @@ class VideoProcessor: ObservableObject {
         }
     }
     
-    // 3. ASS Altyazı Dosyası Oluşturma
-    func generateASS(words: [WordTimestamp], fontName: String, fontSize: Int, marginV: Int, videoURL: URL) -> URL? {
-        // Video boyutlarını al
-        guard let track = AVAsset(url: videoURL).tracks(withMediaType: .video).first else { return nil }
-        let size = track.naturalSize
+    // Font PostScript isimlerini libass/fontconfig'in tanıyacağı Font Family isimlerine dönüştürür.
+    private func getFontFamilyName(for fontName: String) -> String {
+        switch fontName {
+        case "Anton-Regular": return "Anton"
+        case "Bangers-Regular": return "Bangers"
+        case "BebasNeue-Regular": return "Bebas Neue"
+        case "Lato-Bold": return "Lato"
+        case "Pacifico-Regular": return "Pacifico"
+        case "PermanentMarker-Regular": return "Permanent Marker"
+        case "Poppins-Bold": return "Poppins"
+        case "Lobster-Regular": return "Lobster"
+        case "Creepster-Regular": return "Creepster"
+        case "AbrilFatface-Regular": return "Abril Fatface"
+        case "AlfaSlabOne-Regular": return "Alfa Slab One"
+        case "Righteous-Regular": return "Righteous"
+        case "FrancoisOne-Regular": return "Francois One"
+        case "Shrikhand-Regular": return "Shrikhand"
+        case "BlackOpsOne-Regular": return "Black Ops One"
+        default: return fontName.replacingOccurrences(of: "-Bold", with: "").replacingOccurrences(of: "-Heavy", with: "").replacingOccurrences(of: "-Regular", with: "")
+        }
+    }
+    
+    // 3. ASS Altyazı Dosyası Oluşturma (iOS 16+ uyumlu asenkron yapı)
+    func generateASS(words: [WordTimestamp], fontName: String, fontSize: Int, marginV: Int, videoURL: URL) async -> URL? {
+        let asset = AVAsset(url: videoURL)
+        
+        // Modern async API'ler ile video izlerini yükleme
+        guard let tracks = try? await asset.loadTracks(withMediaType: .video),
+              let track = tracks.first else { return nil }
+              
+        // Deprecated naturalSize yerine load(.naturalSize) kullanımı
+        guard let size = try? await track.load(.naturalSize) else { return nil }
+        
         let width = Int(abs(size.width))
         let height = Int(abs(size.height))
+        
+        let familyName = getFontFamilyName(for: fontName)
         
         var assContent = """
         [Script Info]
@@ -98,7 +128,7 @@ class VideoProcessor: ObservableObject {
         
         [V4+ Styles]
         Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-        Style: Default,\(fontName),\(fontSize),&H00FFFFFF,&H000000FF,&H00000000,&H00000000,-1,0,0,0,100,100,0,0,1,3,1.5,8,10,10,\(marginV),1
+        Style: Default,\(familyName),\(fontSize),&H00FFFFFF,&H000000FF,&H00000000,&H00000000,-1,0,0,0,100,100,0,0,1,3,1.5,8,10,10,\(marginV),1
         
         [Events]
         Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text

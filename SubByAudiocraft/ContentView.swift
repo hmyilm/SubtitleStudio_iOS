@@ -177,38 +177,44 @@ struct ContentView: View {
                 }
                 
                 DispatchQueue.main.async { self.statusMessage = "Altyazılar tasarlanıyor..." }
-                let actualFontName = fontName.replacingOccurrences(of: "-Bold", with: "").replacingOccurrences(of: "-Heavy", with: "")
-                guard let assURL = VideoProcessor.shared.generateASS(words: words, fontName: actualFontName, fontSize: Int(fontSize), marginV: Int(marginV), videoURL: url) else {
-                    DispatchQueue.main.async {
-                        self.statusMessage = "Hata: Altyazı dosyası oluşturulamadı."
-                        self.isProcessing = false
-                    }
-                    return
-                }
                 
-                DispatchQueue.main.async { self.statusMessage = "Altyazılar videoya gömülüyor (Bu işlem cihaz hızına göre biraz sürebilir)..." }
-                VideoProcessor.shared.burnSubtitles(videoURL: url, assURL: assURL) { outputURL, errorMessage in
-                    guard let outputURL = outputURL else {
+                Task {
+                    let assURL = await VideoProcessor.shared.generateASS(words: words, fontName: fontName, fontSize: Int(fontSize), marginV: Int(marginV), videoURL: url)
+                    
+                    guard let assURL = assURL else {
                         DispatchQueue.main.async {
-                            self.statusMessage = "Hata: \(errorMessage ?? "Bilinmeyen FFmpeg hatası")"
+                            self.statusMessage = "Hata: Altyazı dosyası oluşturulamadı."
                             self.isProcessing = false
                         }
                         return
                     }
                     
-                    DispatchQueue.main.async { self.statusMessage = "Galeriye kaydediliyor..." }
-                    VideoProcessor.shared.saveToGallery(videoURL: outputURL) { success in
-                        DispatchQueue.main.async {
-                            self.isProcessing = false
-                            if success {
-                                self.statusMessage = "Tebrikler! Altyazılı video galerinize başarıyla kaydedildi. 🎉"
-                            } else {
-                                self.statusMessage = "Hata: Galeriye kaydedilemedi. Lütfen fotoğraf izinlerini kontrol edin."
+                    DispatchQueue.main.async {
+                        self.statusMessage = "Altyazılar videoya gömülüyor (Bu işlem cihaz hızına göre biraz sürebilir)..."
+                    }
+                    
+                    VideoProcessor.shared.burnSubtitles(videoURL: url, assURL: assURL) { outputURL, errorMessage in
+                        guard let outputURL = outputURL else {
+                            DispatchQueue.main.async {
+                                self.statusMessage = "Hata: \(errorMessage ?? "Bilinmeyen FFmpeg hatası")"
+                                self.isProcessing = false
+                            }
+                            return
+                        }
+                        
+                        DispatchQueue.main.async { self.statusMessage = "Galeriye kaydediliyor..." }
+                        VideoProcessor.shared.saveToGallery(videoURL: outputURL) { success in
+                            DispatchQueue.main.async {
+                                self.isProcessing = false
+                                if success {
+                                    self.statusMessage = "Tebrikler! Altyazılı video galerinize başarıyla kaydedildi. 🎉"
+                                } else {
+                                    self.statusMessage = "Hata: Galeriye kaydedilemedi. Lütfen fotoğraf izinlerini kontrol edin."
+                                }
                             }
                         }
                     }
                 }
-            }
         }
     }
 }

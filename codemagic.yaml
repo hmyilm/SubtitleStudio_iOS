@@ -11,7 +11,7 @@ workflows:
     scripts:
       - name: Generate Xcode Project
         script: |
-          brew install xcodegen
+          which xcodegen || brew install xcodegen
           xcodegen generate
       - name: Install Dependencies
         script: |
