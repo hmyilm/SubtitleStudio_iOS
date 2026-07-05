@@ -38,6 +38,7 @@ targets:
         CFBundleDisplayName: Sub by Audiocraft
         CFBundleShortVersionString: "1.0.1"
         CFBundleVersion: "7"
+        ITSAppUsesNonExemptEncryption: false
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
           - UIInterfaceOrientationPortraitUpsideDown
