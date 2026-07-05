@@ -93,13 +93,13 @@ class VideoProcessor: ObservableObject {
                                 // Eğer kelime zaman damgası yoksa segmenti kelimelere bölüp süreyi orantılı dağıtıyoruz
                                 let text = segment.text.trimmingCharacters(in: .whitespacesAndNewlines)
                                 let rawWords = text.components(separatedBy: .whitespaces).filter { !$0.isEmpty }
-                                let duration = segment.end - segment.start
+                                let duration = Double(segment.end) - Double(segment.start)
                                 let wordDur = duration / Double(max(1, rawWords.count))
                                 
                                 for (index, wordText) in rawWords.enumerated() {
                                     let cleanText = wordText.replacingOccurrences(of: "[.,!?;:]", with: "", options: .regularExpression)
                                     if !cleanText.isEmpty {
-                                        let start = segment.start + (Double(index) * wordDur)
+                                        let start = Double(segment.start) + (Double(index) * wordDur)
                                         words.append(WordTimestamp(
                                             text: cleanText,
                                             start: start,
