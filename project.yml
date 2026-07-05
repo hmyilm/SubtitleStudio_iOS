@@ -10,13 +10,13 @@ targets:
     type: application
     platform: iOS
     deploymentTarget: "16.0"
-    version: 1.1.0
-    build: 14
+    version: 1.2.0
+    build: 15
     settings:
       ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
       PRODUCT_BUNDLE_IDENTIFIER: com.hmyilm.SubByAudiocraft
-      MARKETING_VERSION: "1.1.0"
-      CURRENT_PROJECT_VERSION: "14"
+      MARKETING_VERSION: "1.2.0"
+      CURRENT_PROJECT_VERSION: "15"
     sources: [SubByAudiocraft]
     dependencies:
       - package: WhisperKit
@@ -42,8 +42,8 @@ targets:
         UILaunchScreen: {}
         CFBundleIconName: AppIcon
         CFBundleDisplayName: Sub by Audiocraft
-        CFBundleShortVersionString: "1.1.0"
-        CFBundleVersion: "14"
+        CFBundleShortVersionString: "1.2.0"
+        CFBundleVersion: "15"
         ITSAppUsesNonExemptEncryption: false
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
