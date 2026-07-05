@@ -9,7 +9,7 @@ struct ContentView: View {
     @State private var isFontListExpanded: Bool = false
     
     // Config
-    @State private var fontName: String = "Avenir-Heavy"
+    @State private var fontName: String = "Anton-Regular"
     @State private var fontSize: Double = 70.0
     @State private var marginV: Double = 120.0
     
