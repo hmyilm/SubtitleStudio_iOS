@@ -4,25 +4,28 @@ import AVKit
 // Adım 2: Ön izleme + kelime düzenleme listesi
 struct EditWordsView: View {
     @Binding var words: [VideoProcessor.WordTimestamp]
+    let lines: [[VideoProcessor.WordTimestamp]]
     let player: AVPlayer?
     let fontName: String
     @Binding var fontSize: Double
     @Binding var marginV: Double
 
     @State private var expandedWordID: UUID? = nil
+    @State private var previewLine: String = ""
 
     var body: some View {
         VStack(spacing: 16) {
             if player != nil {
                 VStack(alignment: .leading, spacing: 12) {
-                    SectionHeader(icon: "play.rectangle.fill", title: "Ön İzleme")
+                    SectionHeader(icon: "play.rectangle.fill", title: "Canlı Ön İzleme")
 
+                    // Video oynarken o an söylenen satır gerçek zamanlı gösterilir
                     SubtitlePreviewPlayer(
                         player: player,
                         fontName: fontName,
                         fontSize: fontSize,
                         marginV: marginV,
-                        sampleText: words.isEmpty ? "Altyazı Ön İzleme" : words.prefix(3).map { $0.text }.joined(separator: " "),
+                        sampleText: previewLine,
                         height: 200
                     )
 
@@ -89,6 +92,30 @@ struct EditWordsView: View {
                 .frame(maxHeight: 300)
             }
             .card()
+        }
+        // Oynatma konumuna göre aktif satırı bulup ön izlemeye yansıt
+        .onReceive(Timer.publish(every: 0.2, on: .main, in: .common).autoconnect()) { _ in
+            updatePreviewLine()
+        }
+    }
+
+    private func updatePreviewLine() {
+        guard let player = player else {
+            previewLine = ""
+            return
+        }
+        let t = player.currentTime().seconds
+        guard t.isFinite else {
+            previewLine = ""
+            return
+        }
+        if let line = lines.first(where: { group in
+            guard let first = group.first, let last = group.last else { return false }
+            return t >= first.start - 0.2 && t <= last.end + 0.2
+        }) {
+            previewLine = line.map { $0.text }.joined(separator: " ")
+        } else {
+            previewLine = ""
         }
     }
 }

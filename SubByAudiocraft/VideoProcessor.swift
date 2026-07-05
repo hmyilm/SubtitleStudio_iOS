@@ -170,8 +170,42 @@ class VideoProcessor: ObservableObject {
         }
     }
     
+    // Kelimeler arası boşluk ve satır uzunluğuna göre otomatik satır önerisi üretir
+    // (en fazla 4 kelime / ~18 karakter; 0.8 sn'den uzun boşlukta yeni satır)
+    func autoLineGroups(for words: [WordTimestamp]) -> [[WordTimestamp]] {
+        var groups: [[WordTimestamp]] = []
+        var current: [WordTimestamp] = []
+        var currentChars = 0
+
+        for word in words {
+            let wordLength = word.text.count
+            if let lastWord = current.last {
+                let gap = word.start - lastWord.end
+                if current.count >= 4 || currentChars + wordLength > 18 || gap > 0.8 {
+                    groups.append(current)
+                    current = []
+                    currentChars = 0
+                }
+            }
+            current.append(word)
+            currentChars += wordLength + 1
+        }
+        if !current.isEmpty { groups.append(current) }
+        return groups
+    }
+
+    // Otomatik önerinin "satır sonu" kelime kimliklerini döndürür (satır düzenleyici için)
+    func autoLineBreaks(for words: [WordTimestamp]) -> Set<UUID> {
+        var result = Set<UUID>()
+        for group in autoLineGroups(for: words) {
+            if let last = group.last { result.insert(last.id) }
+        }
+        return result
+    }
+
     // 3. ASS Altyazı Dosyası Oluşturma (iOS 16+ uyumlu asenkron yapı)
-    func generateASS(words: [WordTimestamp], fontName: String, fontSize: Int, marginV: Int, videoURL: URL) async -> URL? {
+    // lineBreaks: kullanıcının onayladığı satır sonları (boşsa otomatik öneri kullanılır)
+    func generateASS(words: [WordTimestamp], lineBreaks: Set<UUID>, fontName: String, fontSize: Int, marginV: Int, videoURL: URL) async -> URL? {
         let asset = AVAsset(url: videoURL)
         
         // Modern async API'ler ile video izlerini yükleme
@@ -211,30 +245,22 @@ class VideoProcessor: ObservableObject {
         
         """
         
-        // Kelimeler düzenleme sırasında karışmış olabilir; zamana göre sıralıyoruz
-        let sortedWords = words.sorted { $0.start < $1.start }
-
-        // Kelimeleri cümle benzeri satır gruplarına ayır:
-        // en fazla 4 kelime veya ~18 karakter; kelimeler arası 0.8 sn'den uzun
-        // boşluk varsa yeni satır başlat.
+        // Satır grupları: kullanıcının satır düzenleyicide onayladığı düzen esas alınır;
+        // satır sonu bilgisi yoksa otomatik öneri kullanılır.
         var groups: [[WordTimestamp]] = []
-        var currentGroup: [WordTimestamp] = []
-        var currentChars = 0
-
-        for word in sortedWords {
-            let wordLength = word.text.count
-            if let lastWord = currentGroup.last {
-                let gap = word.start - lastWord.end
-                if currentGroup.count >= 4 || currentChars + wordLength > 18 || gap > 0.8 {
+        if lineBreaks.isEmpty {
+            groups = autoLineGroups(for: words)
+        } else {
+            var currentGroup: [WordTimestamp] = []
+            for word in words {
+                currentGroup.append(word)
+                if lineBreaks.contains(word.id) {
                     groups.append(currentGroup)
                     currentGroup = []
-                    currentChars = 0
                 }
             }
-            currentGroup.append(word)
-            currentChars += wordLength + 1
+            if !currentGroup.isEmpty { groups.append(currentGroup) }
         }
-        if !currentGroup.isEmpty { groups.append(currentGroup) }
 
         // Efekt (kullanıcının Python sistemiyle birebir aynı):
         // Satırın tamamı TAM GÖRÜNÜR (&H00&) gelir; her harf, söylendiği anda

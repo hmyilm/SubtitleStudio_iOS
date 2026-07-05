@@ -4,6 +4,7 @@ import AVKit
 
 enum AppStep {
     case selectVideo
+    case editLines
     case editSubtitles
     case processing
     case done
@@ -19,6 +20,7 @@ struct ContentView: View {
     @State private var processingStage: ProcessingStage = .extractingAudio
     @State private var modelDownloadProgress: Double? = nil
     @State private var words: [VideoProcessor.WordTimestamp] = []
+    @State private var lineBreaks: Set<UUID> = []
     @State private var videoURL: URL? = nil
     @State private var audioURL: URL? = nil
     @State private var player: AVPlayer? = nil
@@ -72,9 +74,12 @@ struct ContentView: View {
                                 marginV: $marginV,
                                 fonts: popularFonts
                             )
+                        case .editLines:
+                            LineEditView(words: $words, breaks: $lineBreaks)
                         case .editSubtitles:
                             EditWordsView(
                                 words: $words,
+                                lines: currentLines,
                                 player: player,
                                 fontName: fontName,
                                 fontSize: $fontSize,
@@ -147,7 +152,7 @@ struct ContentView: View {
 
     @ViewBuilder
     private var bottomBar: some View {
-        if currentStep == .selectVideo || currentStep == .editSubtitles {
+        if currentStep == .selectVideo || currentStep == .editLines || currentStep == .editSubtitles {
             VStack(spacing: 10) {
                 if currentStep == .selectVideo {
                     Button(action: startAnalysis) {
@@ -155,14 +160,31 @@ struct ContentView: View {
                     }
                     .buttonStyle(PrimaryButtonStyle(enabled: selectedItem != nil && !isProcessing))
                     .disabled(selectedItem == nil || isProcessing)
+                } else if currentStep == .editLines {
+                    Button(action: {
+                        currentStep = .editSubtitles
+                        statusMessage = "Satırlar onaylandı. Şimdi zamanlamaları kontrol edebilirsin."
+                    }) {
+                        Label("Satırları Onayla", systemImage: "checkmark.circle.fill")
+                    }
+                    .buttonStyle(PrimaryButtonStyle())
+
+                    Button(action: resetToImport) {
+                        Text("İptal (Başa Dön)")
+                            .font(.footnote)
+                            .foregroundColor(.gray)
+                    }
                 } else {
                     Button(action: burnFinalVideo) {
                         Label("Videoya Göm ve Kaydet", systemImage: "square.and.arrow.down")
                     }
                     .buttonStyle(PrimaryButtonStyle())
 
-                    Button(action: resetToImport) {
-                        Text("Geri Dön (Videoyu Değiştir)")
+                    Button(action: {
+                        currentStep = .editLines
+                        statusMessage = "Satır düzenine dönüldü."
+                    }) {
+                        Text("Satır Düzenine Dön")
                             .font(.footnote)
                             .foregroundColor(.gray)
                     }
@@ -182,15 +204,31 @@ struct ContentView: View {
     private var stepIndex: Int {
         switch currentStep {
         case .selectVideo: return 0
-        case .editSubtitles: return 1
-        case .processing: return processingStage.rawValue >= ProcessingStage.burning.rawValue ? 2 : 0
-        case .done: return 3
+        case .editLines: return 1
+        case .editSubtitles: return 2
+        case .processing: return processingStage.rawValue >= ProcessingStage.burning.rawValue ? 3 : 0
+        case .done: return 4
         }
+    }
+
+    // Kullanıcının onayladığı satır düzeni (ön izleme ve ASS üretimi bunları kullanır)
+    private var currentLines: [[VideoProcessor.WordTimestamp]] {
+        var groups: [[VideoProcessor.WordTimestamp]] = []
+        var current: [VideoProcessor.WordTimestamp] = []
+        for word in words {
+            current.append(word)
+            if lineBreaks.contains(word.id) {
+                groups.append(current)
+                current = []
+            }
+        }
+        if !current.isEmpty { groups.append(current) }
+        return groups
     }
 
     // Banner yalnızca hata ve anlamlı başarı mesajlarında görünür
     private var showBanner: Bool {
-        guard currentStep == .selectVideo || currentStep == .editSubtitles else { return false }
+        guard currentStep == .selectVideo || currentStep == .editLines || currentStep == .editSubtitles else { return false }
         return statusMessage.hasPrefix("Hata:") || statusMessage.contains("başarıyla")
     }
 
@@ -282,9 +320,10 @@ struct ContentView: View {
                 DispatchQueue.main.async {
                     self.modelDownloadProgress = nil
                     self.words = words
+                    self.lineBreaks = VideoProcessor.shared.autoLineBreaks(for: words)
                     self.isProcessing = false
-                    self.currentStep = .editSubtitles
-                    self.statusMessage = "Ses başarıyla yazıya çevrildi. Kelimeleri düzenleyip stili ayarlayabilirsin."
+                    self.currentStep = .editLines
+                    self.statusMessage = "Sözler çıkarıldı. Satır düzenini kontrol edip onaylayın."
                 }
             }
         }
@@ -307,7 +346,7 @@ struct ContentView: View {
 
         Task {
             let actualFontName = fontName
-            let assURL = await VideoProcessor.shared.generateASS(words: words, fontName: actualFontName, fontSize: Int(fontSize), marginV: Int(marginV), videoURL: url)
+            let assURL = await VideoProcessor.shared.generateASS(words: words, lineBreaks: lineBreaks, fontName: actualFontName, fontSize: Int(fontSize), marginV: Int(marginV), videoURL: url)
 
             guard let assURL = assURL else {
                 DispatchQueue.main.async {
@@ -350,6 +389,7 @@ struct ContentView: View {
                             self.selectedItem = nil
                             self.player = nil
                             self.words = []
+                            self.lineBreaks = []
 
                             // Başarılı bitişte tüm geçici dosyaları temizle
                             VideoProcessor.shared.deleteFile(at: audioURL)
@@ -380,6 +420,7 @@ struct ContentView: View {
         self.player = nil
         self.selectedItem = nil
         self.words = []
+        self.lineBreaks = []
         self.currentStep = .selectVideo
         self.statusMessage = "Video Seçin"
     }

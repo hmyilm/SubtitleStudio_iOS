@@ -5,13 +5,13 @@ import UIKit
 // MARK: - 3 Adımlı İlerleme Göstergesi (Video → Düzenle → Kaydet)
 struct StepIndicator: View {
     let currentIndex: Int
-    private let steps = ["Video", "Düzenle", "Kaydet"]
+    private let steps = ["Video", "Satırlar", "Zaman", "Kaydet"]
 
     var body: some View {
         HStack(alignment: .top, spacing: 0) {
-            ForEach(0..<3, id: \.self) { index in
+            ForEach(0..<4, id: \.self) { index in
                 stepCircle(index)
-                if index < 2 {
+                if index < 3 {
                     Rectangle()
                         .fill(index < currentIndex ? Theme.yellow : Color(white: 0.2))
                         .frame(height: 2)
@@ -49,7 +49,7 @@ struct StepIndicator: View {
                 .font(.caption2)
                 .foregroundColor(index == currentIndex ? Theme.yellow : .gray)
         }
-        .frame(width: 60)
+        .frame(width: 52)
     }
 }
 
@@ -255,14 +255,17 @@ struct SubtitlePreviewPlayer: View {
                 }
 
                 // 1080p referans yüksekliğine göre ölçeklenmiş canlı altyazı bindirmesi
-                Text(sampleText)
-                    .font(.custom(fontName, size: CGFloat(fontSize) * (geo.size.height / 1080.0)))
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 5)
-                    .background(Color.black.opacity(0.6))
-                    .cornerRadius(6)
-                    .padding(.bottom, CGFloat(marginV) * (geo.size.height / 1080.0))
+                if !sampleText.isEmpty {
+                    Text(sampleText)
+                        .font(.custom(fontName, size: CGFloat(fontSize) * (geo.size.height / 1080.0)))
+                        .foregroundColor(.white)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(Color.black.opacity(0.6))
+                        .cornerRadius(6)
+                        .padding(.bottom, CGFloat(marginV) * (geo.size.height / 1080.0))
+                }
             }
         }
         .frame(height: height)
