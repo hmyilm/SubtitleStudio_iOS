@@ -293,6 +293,24 @@ struct ContentView: View {
                                 Text("3. Sözleri Düzenleyin")
                                     .font(.headline)
                                 Spacer()
+                                Button(action: {
+                                    let newWord = VideoProcessor.WordTimestamp(
+                                        text: "Yeni",
+                                        start: words.last?.end ?? 0.0,
+                                        end: (words.last?.end ?? 0.0) + 1.0
+                                    )
+                                    words.append(newWord)
+                                }) {
+                                    HStack(spacing: 4) {
+                                        Image(systemName: "plus.circle.fill")
+                                        Text("Kelime Ekle")
+                                    }
+                                    .font(.caption)
+                                    .fontWeight(.bold)
+                                    .foregroundColor(.purple)
+                                }
+                                .padding(.trailing, 4)
+                                
                                 Text("\(words.count) Kelime").font(.caption).foregroundColor(.gray)
                             }
                             

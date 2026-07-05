@@ -205,7 +205,7 @@ class VideoProcessor: ObservableObject {
             "-i", inPath,
             "-vf", vfString,
             "-c:v", "h264_videotoolbox",
-            "-b:v", "15M",
+            "-b:v", "30M",
             "-c:a", "copy",
             outPath
         ]
