@@ -4,6 +4,8 @@ workflows:
     environment:
       xcode: latest
       cocoapods: default
+      groups:
+        - ios_credentials
     integrations:
       app_store_connect: Codemagic3
     scripts:
