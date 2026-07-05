@@ -4,6 +4,9 @@ workflows:
     environment:
       xcode: latest
       cocoapods: default
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.hmyilm.SubtitleStudio
     scripts:
       - name: Generate Xcode Project
         script: |
@@ -12,8 +15,15 @@ workflows:
       - name: Install Dependencies
         script: |
           pod install
-      - name: Build App
+      - name: Set up code signing
         script: |
-          xcodebuild build -workspace SubtitleStudio.xcworkspace -scheme SubtitleStudio -sdk iphoneos CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO
+          xcode-project use-profiles
+      - name: Build App for TestFlight
+        script: |
+          xcode-project build-ipa --workspace SubtitleStudio.xcworkspace --scheme SubtitleStudio
     artifacts:
-      - $HOME/Library/Developer/Xcode/DerivedData/**/Build/**/*.app
+      - build/ios/ipa/*.ipa
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
