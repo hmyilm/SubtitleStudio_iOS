@@ -10,7 +10,7 @@ targets:
       ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
       PRODUCT_BUNDLE_IDENTIFIER: com.hmyilm.SubByAudiocraft
       MARKETING_VERSION: "1.0.1"
-      CURRENT_PROJECT_VERSION: "4"
+      CURRENT_PROJECT_VERSION: "5"
     sources: [SubByAudiocraft]
     info:
       path: SubByAudiocraft/Info.plist
@@ -23,6 +23,14 @@ targets:
           - Pacifico-Regular.ttf
           - PermanentMarker-Regular.ttf
           - Poppins-Bold.ttf
+          - Lobster-Regular.ttf
+          - Creepster-Regular.ttf
+          - AbrilFatface-Regular.ttf
+          - AlfaSlabOne-Regular.ttf
+          - Righteous-Regular.ttf
+          - FrancoisOne-Regular.ttf
+          - Shrikhand-Regular.ttf
+          - BlackOpsOne-Regular.ttf
         UILaunchScreen: {}
         CFBundleIconName: AppIcon
         CFBundleDisplayName: Sub by Audiocraft

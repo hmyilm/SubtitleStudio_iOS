@@ -12,7 +12,7 @@ struct ContentView: View {
     @State private var fontSize: Double = 70.0
     @State private var marginV: Double = 120.0
     
-    // Popüler Özel Fontlar (Uygulamaya Gömülü)
+    // Popüler Özel Fontlar (Uygulamaya Gömülü - 15 Adet)
     let popularFonts = [
         "Anton-Regular",
         "Bangers-Regular",
@@ -20,7 +20,15 @@ struct ContentView: View {
         "Lato-Bold",
         "Pacifico-Regular",
         "PermanentMarker-Regular",
-        "Poppins-Bold"
+        "Poppins-Bold",
+        "Lobster-Regular",
+        "Creepster-Regular",
+        "AbrilFatface-Regular",
+        "AlfaSlabOne-Regular",
+        "Righteous-Regular",
+        "FrancoisOne-Regular",
+        "Shrikhand-Regular",
+        "BlackOpsOne-Regular"
     ]
     
     var body: some View {
