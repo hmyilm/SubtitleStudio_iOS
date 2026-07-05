@@ -8,9 +8,16 @@ struct ContentView: View {
     @State private var segments: [String] = [] // Will hold Whisper results
     
     // Config
-    @State private var fontName: String = "Georgia"
-    @State private var fontSize: String = "70"
-    @State private var marginV: String = "1250"
+    @State private var fontName: String = "Avenir-Heavy"
+    @State private var fontSize: Double = 70.0
+    @State private var marginV: Double = 120.0
+    
+    // Popüler iOS Fontları
+    let popularFonts = [
+        "Avenir-Heavy", "Helvetica-Bold", "Arial-BoldMT", 
+        "Georgia-Bold", "TimesNewRomanPS-BoldMT", "CourierNewPS-BoldMT", 
+        "Verdana-Bold", "TrebuchetMS-Bold", "Impact", "ChalkboardSE-Bold"
+    ]
     
     var body: some View {
         NavigationView {
@@ -23,7 +30,7 @@ struct ContentView: View {
                         .padding(.top)
                     
                     // 1. Video Seçimi
-                    VStack(alignment: .leading, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 16) {
                         Text("1. Video ve Ayarlar")
                             .font(.headline)
                         
@@ -44,27 +51,39 @@ struct ContentView: View {
                             }
                         }
                         
+                        Divider()
+                        
                         // Ayarlar
-                        HStack {
-                            VStack(alignment: .leading) {
-                                Text("Yazı Tipi")
-                                    .font(.caption)
-                                TextField("Georgia", text: $fontName)
-                                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                        VStack(alignment: .leading, spacing: 16) {
+                            // Font Seçimi
+                            HStack {
+                                Text("Yazı Tipi:")
+                                    .fontWeight(.semibold)
+                                Spacer()
+                                Picker("Yazı Tipi", selection: $fontName) {
+                                    ForEach(popularFonts, id: \.self) { font in
+                                        Text(font.replacingOccurrences(of: "-Bold", with: "").replacingOccurrences(of: "-Heavy", with: ""))
+                                            .font(.custom(font, size: 16))
+                                            .tag(font)
+                                    }
+                                }
+                                .pickerStyle(MenuPickerStyle())
                             }
+                            
+                            // Boyut Seçimi
                             VStack(alignment: .leading) {
-                                Text("Boyut")
-                                    .font(.caption)
-                                TextField("70", text: $fontSize)
-                                    .keyboardType(.numberPad)
-                                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                                Text("Yazı Büyüklüğü: \(Int(fontSize))")
+                                    .fontWeight(.semibold)
+                                Slider(value: $fontSize, in: 30...150, step: 1)
+                                    .accentColor(.purple)
                             }
+                            
+                            // Konum Seçimi
                             VStack(alignment: .leading) {
-                                Text("MarginV")
-                                    .font(.caption)
-                                TextField("1250", text: $marginV)
-                                    .keyboardType(.numberPad)
-                                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                                Text("Aşağı/Yukarı Konum: \(Int(marginV))")
+                                    .fontWeight(.semibold)
+                                Slider(value: $marginV, in: 0...500, step: 5)
+                                    .accentColor(.purple)
                             }
                         }
                     }
