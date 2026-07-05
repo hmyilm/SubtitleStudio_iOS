@@ -16,24 +16,38 @@ class VideoProcessor: ObservableObject {
     }
     
     // 1. Sesi Videodan Çıkarma
+    // 1. Sesi Videodan 16kHz Mono WAV (PCM) Olarak Çıkarma (Siri ses tanıma motorunun yarıda kesilmesini önler)
     func extractAudio(from videoURL: URL, completion: @escaping (URL?) -> Void) {
-        let asset = AVAsset(url: videoURL)
+        let outputURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+            .appendingPathExtension("wav")
         
-        guard let exportSession = AVAssetExportSession(asset: asset, presetName: AVAssetExportPresetAppleM4A) else {
-            completion(nil)
-            return
-        }
+        let inPath = videoURL.path
+        let outPath = outputURL.path
         
-        let audioURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".m4a")
+        // SFSpeechRecognizer için en kararlı format: 16kHz, Tek Kanal (Mono), 16-bit PCM WAV
+        let args = [
+            "-y",
+            "-i", inPath,
+            "-vn",
+            "-acodec", "pcm_s16le",
+            "-ar", "16000",
+            "-ac", "1",
+            outPath
+        ]
         
-        exportSession.outputURL = audioURL
-        exportSession.outputFileType = .m4a
-        
-        exportSession.exportAsynchronously {
-            if exportSession.status == .completed {
-                completion(audioURL)
+        FFmpegKit.execute(withArgumentsAsync: args) { session in
+            guard let session = session else {
+                completion(nil)
+                return
+            }
+            
+            let returnCode = session.getReturnCode()
+            if ReturnCode.isSuccess(returnCode) {
+                completion(outputURL)
             } else {
-                print("Audio export failed: \(String(describing: exportSession.error))")
+                let logs = session.getLogsAsString() ?? ""
+                print("FFmpeg ses çıkarma hatası: \(logs)")
                 completion(nil)
             }
         }
