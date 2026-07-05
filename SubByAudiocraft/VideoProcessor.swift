@@ -143,8 +143,8 @@ class VideoProcessor: ObservableObject {
     func burnSubtitles(videoURL: URL, assURL: URL, completion: @escaping (URL?, String?) -> Void) {
         let outputURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".mp4")
         
-        // Font kütüphanesini FFmpegKit'e tanıtıyoruz (iOS sistem fontları için çok önemli)
-        FFmpegKitConfig.setFontDirectoryList(["/System/Library/Fonts", "/System/Library/Fonts/Core", "/System/Library/Fonts/AppFonts"], andFontNameMap: nil)
+        // Font kütüphanesini FFmpegKit'e tanıtıyoruz (Özel yüklediğimiz fontlar uygulamanın kök dizininde yer alır)
+        FFmpegKitConfig.setFontDirectoryList([Bundle.main.bundlePath, "/System/Library/Fonts", "/System/Library/Fonts/Core"], andFontNameMap: nil)
         
         let inPath = videoURL.path
         let outPath = outputURL.path

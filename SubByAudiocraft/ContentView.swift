@@ -12,11 +12,15 @@ struct ContentView: View {
     @State private var fontSize: Double = 70.0
     @State private var marginV: Double = 120.0
     
-    // Popüler iOS Fontları
+    // Popüler Özel Fontlar (Uygulamaya Gömülü)
     let popularFonts = [
-        "Avenir-Heavy", "Helvetica-Bold", "Arial-BoldMT", 
-        "Georgia-Bold", "TimesNewRomanPS-BoldMT", "CourierNewPS-BoldMT", 
-        "Verdana-Bold", "TrebuchetMS-Bold", "Impact", "ChalkboardSE-Bold"
+        "Anton-Regular",
+        "Bangers-Regular",
+        "BebasNeue-Regular",
+        "Lato-Bold",
+        "Pacifico-Regular",
+        "PermanentMarker-Regular",
+        "Poppins-Bold"
     ]
     
     var body: some View {
