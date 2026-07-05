@@ -193,14 +193,13 @@ class VideoProcessor: ObservableObject {
         
         let vfString = "ass='\(escapedAssPath)'"
         
-        // Argümanları dizi olarak vermek komut satırı açıklarını kapatır ve boşluk/tırnak hatalarını önler
+        // Hardware accelerated encoding on iOS using h264_videotoolbox. Much faster and uses less battery.
         let args = [
             "-y",
             "-i", inPath,
             "-vf", vfString,
-            "-c:v", "libx264",
+            "-c:v", "h264_videotoolbox",
             "-b:v", "15M",
-            "-preset", "fast",
             "-c:a", "copy",
             outPath
         ]
@@ -218,8 +217,8 @@ class VideoProcessor: ObservableObject {
             } else {
                 let logs = session.getLogsAsString() ?? "Log alınamadı"
                 print("FFMPEG HATASI: \(logs)")
-                // Sadece son 500 karakteri gösterelim ki ekrana sığsın
-                let shortLog = String(logs.suffix(500))
+                // Tam logu veya en azından son 5000 karakteri göstererek hatayı yakalıyoruz
+                let shortLog = String(logs.suffix(5000))
                 completion(nil, shortLog)
             }
         }
