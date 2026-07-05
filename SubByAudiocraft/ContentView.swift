@@ -6,6 +6,7 @@ struct ContentView: View {
     @State private var statusMessage: String = "Video Seçin"
     @State private var isProcessing: Bool = false
     @State private var segments: [String] = [] // Will hold Whisper results
+    @State private var isFontListExpanded: Bool = false
     
     // Config
     @State private var fontName: String = "Avenir-Heavy"
@@ -67,19 +68,59 @@ struct ContentView: View {
                         
                         // Ayarlar
                         VStack(alignment: .leading, spacing: 16) {
-                            // Font Seçimi
-                            HStack {
+                            // Font Seçimi (Aşağı açılır şık ve ön izlemeli özel liste)
+                            VStack(alignment: .leading, spacing: 8) {
                                 Text("Yazı Tipi:")
                                     .fontWeight(.semibold)
-                                Spacer()
-                                Picker("Yazı Tipi", selection: $fontName) {
-                                    ForEach(popularFonts, id: \.self) { font in
-                                        Text(font.replacingOccurrences(of: "-Bold", with: "").replacingOccurrences(of: "-Heavy", with: ""))
-                                            .font(.custom(font, size: 16))
-                                            .tag(font)
+                                
+                                Button(action: { withAnimation { isFontListExpanded.toggle() } }) {
+                                    HStack {
+                                        Text(fontName.replacingOccurrences(of: "-Regular", with: "").replacingOccurrences(of: "-Bold", with: "").replacingOccurrences(of: "-Heavy", with: ""))
+                                            .font(.custom(fontName, size: 18))
+                                        Spacer()
+                                        Image(systemName: isFontListExpanded ? "chevron.up" : "chevron.down")
                                     }
+                                    .padding(.horizontal)
+                                    .padding(.vertical, 12)
+                                    .background(Color(UIColor.tertiarySystemBackground))
+                                    .cornerRadius(10)
                                 }
-                                .pickerStyle(MenuPickerStyle())
+                                .foregroundColor(.primary)
+                                
+                                if isFontListExpanded {
+                                    VStack(spacing: 0) {
+                                        ScrollView(.vertical, showsIndicators: true) {
+                                            VStack(spacing: 0) {
+                                                ForEach(popularFonts, id: \.self) { font in
+                                                    Button(action: {
+                                                        fontName = font
+                                                        withAnimation { isFontListExpanded = false }
+                                                    }) {
+                                                        HStack {
+                                                            Text(font.replacingOccurrences(of: "-Regular", with: "").replacingOccurrences(of: "-Bold", with: "").replacingOccurrences(of: "-Heavy", with: ""))
+                                                                .font(.custom(font, size: 20))
+                                                                .foregroundColor(.primary)
+                                                            Spacer()
+                                                            if fontName == font {
+                                                                Image(systemName: "checkmark")
+                                                                    .foregroundColor(.purple)
+                                                            }
+                                                        }
+                                                        .padding()
+                                                        .background(Color(UIColor.secondarySystemGroupedBackground))
+                                                    }
+                                                    Divider()
+                                                }
+                                            }
+                                        }
+                                        .frame(maxHeight: 250) // Liste boyutu çok uzamasın diye sınırlıyoruz
+                                    }
+                                    .cornerRadius(10)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 10)
+                                            .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+                                    )
+                                }
                             }
                             
                             // Boyut Seçimi
