@@ -32,6 +32,12 @@ struct ContentView: View {
         "BlackOpsOne-Regular"
     ]
     
+    var logFileURL: URL? {
+        let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent("ffmpeg_error_log.txt")
+        try? statusMessage.write(to: tempURL, atomically: true, encoding: .utf8)
+        return tempURL
+    }
+    
     var body: some View {
         NavigationView {
             ScrollView {
@@ -171,6 +177,43 @@ struct ContentView: View {
                         .foregroundColor(.gray)
                         .multilineTextAlignment(.center)
                         .textSelection(.enabled)
+                    
+                    if statusMessage.hasPrefix("Hata:") {
+                        VStack(spacing: 12) {
+                            Button(action: {
+                                UIPasteboard.general.string = statusMessage
+                            }) {
+                                HStack {
+                                    Image(systemName: "doc.on.doc.fill")
+                                    Text("Hata Logunu Kopyala")
+                                }
+                                .font(.subheadline)
+                                .fontWeight(.semibold)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 8)
+                                .background(Color.blue)
+                                .foregroundColor(.white)
+                                .cornerRadius(8)
+                            }
+                            
+                            if let fileURL = logFileURL {
+                                ShareLink(item: fileURL) {
+                                    HStack {
+                                        Image(systemName: "folder.fill")
+                                        Text("Dosyalara Kaydet / Paylaş")
+                                    }
+                                    .font(.subheadline)
+                                    .fontWeight(.semibold)
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 8)
+                                    .background(Color.green)
+                                    .foregroundColor(.white)
+                                    .cornerRadius(8)
+                                }
+                            }
+                        }
+                        .padding(.top, 8)
+                    }
                     
                 }
                 .padding()
