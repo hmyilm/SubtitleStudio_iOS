@@ -1,0 +1,21 @@
+name: SubtitleStudio
+options:
+  bundleIdPrefix: com.hmyilm
+targets:
+  SubtitleStudio:
+    type: application
+    platform: iOS
+    deploymentTarget: "16.0"
+    sources: [SubtitleStudio]
+    info:
+      path: SubtitleStudio/Info.plist
+      properties:
+        UILaunchScreen: {}
+        NSPhotoLibraryUsageDescription: "Videolarınızı işleyebilmek için fotoğraf galerinize erişmemiz gerekiyor."
+        NSPhotoLibraryAddUsageDescription: "Oluşturulan altyazılı videoyu galerinize kaydetmek için izin gerekiyor."
+    dependencies:
+      - package: whisper
+packages:
+  whisper:
+    url: https://github.com/ggerganov/whisper.cpp.git
+    from: 1.5.0

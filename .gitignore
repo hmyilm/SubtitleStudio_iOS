@@ -1,0 +1,22 @@
+# Xcode
+build/
+*.pbxproj
+*.xcworkspace
+xcuserdata/
+DerivedData/
+*.xccheckout
+*.xcscmblueprint
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# CocoaPods
+Pods/
+Podfile.lock
+
+# macOS
+.DS_Store
+
+# XcodeGen
+*.xcodeproj

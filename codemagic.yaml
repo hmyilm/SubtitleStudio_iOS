@@ -1,0 +1,19 @@
+workflows:
+  ios-build:
+    name: Subtitle Studio iOS Build
+    environment:
+      xcode: latest
+      cocoapods: default
+    scripts:
+      - name: Generate Xcode Project
+        script: |
+          brew install xcodegen
+          xcodegen generate
+      - name: Install Dependencies
+        script: |
+          pod install
+      - name: Build App
+        script: |
+          xcodebuild build -workspace SubtitleStudio.xcworkspace -scheme SubtitleStudio -sdk iphoneos CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO
+    artifacts:
+      - $HOME/Library/Developer/Xcode/DerivedData/**/Build/**/*.app
