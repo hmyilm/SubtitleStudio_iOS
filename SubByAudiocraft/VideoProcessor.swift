@@ -144,7 +144,7 @@ class VideoProcessor: ObservableObject {
         let outputURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".mp4")
         
         // Font kütüphanesini FFmpegKit'e tanıtıyoruz (Özel yüklediğimiz fontlar uygulamanın kök dizininde yer alır)
-        FFmpegKitConfig.setFontDirectoryList([Bundle.main.bundlePath, "/System/Library/Fonts", "/System/Library/Fonts/Core"], andFontNameMap: nil)
+        FFmpegKitConfig.setFontDirectoryList([Bundle.main.bundlePath, "/System/Library/Fonts", "/System/Library/Fonts/Core"], with: nil)
         
         let inPath = videoURL.path
         let outPath = outputURL.path
@@ -169,7 +169,7 @@ class VideoProcessor: ObservableObject {
             outPath
         ]
         
-        FFmpegKit.executeWithArgumentsAsync(args) { session in
+        FFmpegKit.execute(withArgumentsAsync: args) { session in
             guard let session = session else {
                 completion(nil, "Bilinmeyen bir oturum hatası")
                 return
