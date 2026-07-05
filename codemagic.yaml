@@ -8,7 +8,7 @@ workflows:
         distribution_type: app_store
         bundle_identifier: com.hmyilm.SubtitleStudio
     integrations:
-      app_store_connect: BURAYA_ANAHTAR_ADINI_YAZIN
+      app_store_connect: Codemagic2
     scripts:
       - name: Generate Xcode Project
         script: |
