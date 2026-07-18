@@ -3,6 +3,7 @@ import AVFoundation
 import WhisperKit
 import Photos
 import ffmpegkit
+import CoreText
 
 class VideoProcessor: ObservableObject {
     static let shared = VideoProcessor()
@@ -329,13 +330,46 @@ class VideoProcessor: ObservableObject {
         }
     }
     
+    // Filtre argümanlarında geçebilecek özel karakterleri FFmpeg için escape eder
+    private func escapeForFilter(_ path: String) -> String {
+        path.replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: ":", with: "\\:")
+            .replacingOccurrences(of: ",", with: "\\,")
+    }
+
+    // Seçilen fontun GERÇEK dosyasını CoreText üzerinden bulup geçici bir klasöre kopyalar.
+    // Bu klasör libass'a fontsdir ile doğrudan verilir: fontconfig'in sistem klasörü
+    // taraması bazı sistem fontlarını bulamıyor ve libass sessizce varsayılan fonta
+    // düşüyordu ("video, ön izlemedeki fonttan farklı çıkıyor" şikayetinin nedeni).
+    // Dosya bulunamazsa nil döner ve eski fontconfig yolu yedek olarak devrede kalır.
+    private func prepareFontsDir(for fontName: String) -> URL? {
+        let ctFont = CTFontCreateWithName(fontName as CFString, 24, nil)
+
+        // CoreText istenen fontu bulamazsa sessizce başka bir fonta düşer;
+        // yanlış dosyayı kopyalamamak için çözümlenen adı doğruluyoruz.
+        let resolvedName = CTFontCopyPostScriptName(ctFont) as String
+        guard resolvedName.caseInsensitiveCompare(fontName) == .orderedSame,
+              let fontFileURL = CTFontCopyAttribute(ctFont, kCTFontURLAttribute) as? URL else {
+            return nil
+        }
+
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ass_fonts_" + UUID().uuidString, isDirectory: true)
+        do {
+            try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+            try FileManager.default.copyItem(at: fontFileURL, to: dir.appendingPathComponent(fontFileURL.lastPathComponent))
+            return dir
+        } catch {
+            try? FileManager.default.removeItem(at: dir)
+            return nil
+        }
+    }
+
     // 4. FFmpegKit ile Videoyu Oluşturma
-    func burnSubtitles(videoURL: URL, assURL: URL, completion: @escaping (URL?, String?) -> Void) {
+    func burnSubtitles(videoURL: URL, assURL: URL, fontName: String, completion: @escaping (URL?, String?) -> Void) {
         let outputURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".mp4")
-        
-        // Font kütüphanesini FFmpegKit'e tanıtıyoruz (Özel yüklediğimiz fontlar uygulamanın kök dizininde yer alır)
-        // CoreAddition: Avenir Next, Futura, Marker Felt, Noteworthy gibi sistem fontları bu klasördedir;
-        // eklenmezse bu fontlar videoya gömülürken bulunamaz ve libass varsayılan fonta düşer.
+
+        // Yedek yol: fontconfig sistem klasörlerini de tanır (fontsdir başarısız olursa)
         FFmpegKitConfig.setFontDirectoryList([
             Bundle.main.bundlePath,
             "/System/Library/Fonts",
@@ -345,17 +379,17 @@ class VideoProcessor: ObservableObject {
             "/System/Library/Fonts/AppFonts",
             "/System/Library/Fonts/Extra"
         ], with: nil)
-        
+
+        // Asıl yol: seçilen fontun dosyası libass'a doğrudan verilir
+        let fontsDir = prepareFontsDir(for: fontName)
+
         let inPath = videoURL.path
         let outPath = outputURL.path
-        
-        // ASS filtresi içinde geçebilecek özel karakterleri FFmpeg için escape ediyoruz
-        let escapedAssPath = assURL.path
-            .replacingOccurrences(of: "\\", with: "\\\\")
-            .replacingOccurrences(of: ":", with: "\\:")
-            .replacingOccurrences(of: ",", with: "\\,")
-        
-        let vfString = "ass='\(escapedAssPath)'"
+
+        var vfString = "ass='\(escapeForFilter(assURL.path))'"
+        if let fontsDir = fontsDir {
+            vfString += ":fontsdir='\(escapeForFilter(fontsDir.path))'"
+        }
         
         // Hardware accelerated encoding on iOS using h264_videotoolbox. Much faster and uses less battery.
         // -allow_sw 1: donanım kodlayıcı kullanılamazsa yazılım kodlayıcıya düşerek çökmesini önler.
@@ -373,6 +407,11 @@ class VideoProcessor: ObservableObject {
         ]
 
         FFmpegKit.execute(withArgumentsAsync: args) { session in
+            // Kodlama bitti; geçici font kopyası artık gerekmez
+            if let fontsDir = fontsDir {
+                try? FileManager.default.removeItem(at: fontsDir)
+            }
+
             guard let session = session else {
                 completion(nil, "Bilinmeyen bir oturum hatası")
                 return

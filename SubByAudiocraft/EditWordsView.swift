@@ -6,7 +6,7 @@ struct EditWordsView: View {
     @Binding var words: [VideoProcessor.WordTimestamp]
     let lines: [[VideoProcessor.WordTimestamp]]
     let player: AVPlayer?
-    let fontName: String
+    @Binding var fontName: String
     @Binding var fontSize: Double
     @Binding var marginV: Double
 
@@ -28,6 +28,10 @@ struct EditWordsView: View {
                         sampleText: previewLine,
                         height: 200
                     )
+
+                    // Font burada da değiştirilebilir: Geçmiş'ten açılan projelerde
+                    // 1. adıma (video seçme) dönüş yoktur, stilin tamamı bu ekrandan yönetilir.
+                    FontChipPicker(fonts: FontCatalog.hepsi, selection: $fontName)
 
                     HStack(spacing: 12) {
                         LabeledSlider(icon: "textformat.size", title: "Boyut", value: $fontSize, range: 30...150, step: 1)

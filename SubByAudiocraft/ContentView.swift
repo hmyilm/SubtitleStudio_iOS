@@ -67,7 +67,7 @@ struct ContentView: View {
                                 words: $words,
                                 lines: currentLines,
                                 player: player,
-                                fontName: fontName,
+                                fontName: $fontName,
                                 fontSize: $fontSize,
                                 marginV: $marginV
                             )
@@ -397,7 +397,7 @@ struct ContentView: View {
                 self.statusMessage = "Altyazılar videoya gömülüyor (Bu işlem cihaz hızına göre biraz sürebilir)..."
             }
 
-            VideoProcessor.shared.burnSubtitles(videoURL: url, assURL: assURL) { outputURL, errorMessage in
+            VideoProcessor.shared.burnSubtitles(videoURL: url, assURL: assURL, fontName: actualFontName) { outputURL, errorMessage in
                 guard let outputURL = outputURL else {
                     DispatchQueue.main.async {
                         // Video ve ses dosyaları korunur; kullanıcı düzenleme ekranından tekrar deneyebilir
