@@ -219,6 +219,11 @@ class VideoProcessor: ObservableObject {
         // uyguluyor ve gömülen yazı ön izlemedekinden farklı ("font değişmiş gibi") görünüyordu.
         let boldFlag = (FontCatalog.secenek(fontName)?.kalin ?? fontName.contains("Bold")) ? -1 : 0
 
+        // Bitişik (el yazısı) fontlarda soluklaşma harf harf değil kelime bütünü uygulanır:
+        // harf başına ayrı etiket bloğu, animasyon sırasında harf bağlarını koparıp harfi
+        // anlık "normal" (bağlantısız) forma döndürüyordu.
+        let bitisikFont = FontCatalog.secenek(fontName)?.bitisik ?? false
+
         var assContent = """
         [Script Info]
         ScriptType: v4.00+
@@ -303,14 +308,23 @@ class VideoProcessor: ObservableObject {
                 let wordStart = max(segStart, word.start)
                 let wordEnd = max(wordStart + 0.05, word.end)
 
-                let chars = Array(cleanText)
-                let letterDur = (wordEnd - wordStart) / Double(chars.count)
+                if bitisikFont {
+                    // Kelimenin tamamı tek etiket bloğunda: kelime içinde etiket sınırı
+                    // olmadığından harf bağları hiçbir karede kopamaz.
+                    let wStartMs = Int((wordStart - segStart) * 1000)
+                    let wEndMs = Int((wordEnd - segStart) * 1000)
+                    let fadeEnd = max(wStartMs + 20, min(wEndMs, wStartMs + 250))
+                    effectText += "{\\alpha&H00&\\t(\(wStartMs),\(fadeEnd),\\alpha&HA0&)}\(cleanText)"
+                } else {
+                    let chars = Array(cleanText)
+                    let letterDur = (wordEnd - wordStart) / Double(chars.count)
 
-                for (i, char) in chars.enumerated() {
-                    let lStartMs = Int((wordStart + Double(i) * letterDur - segStart) * 1000)
-                    let lEndMs = Int((wordStart + Double(i + 1) * letterDur - segStart) * 1000)
-                    let fadeEnd = max(lStartMs + 20, min(lEndMs, lStartMs + 100))
-                    effectText += "{\\alpha&H00&\\t(\(lStartMs),\(fadeEnd),\\alpha&HA0&)}\(char)"
+                    for (i, char) in chars.enumerated() {
+                        let lStartMs = Int((wordStart + Double(i) * letterDur - segStart) * 1000)
+                        let lEndMs = Int((wordStart + Double(i + 1) * letterDur - segStart) * 1000)
+                        let fadeEnd = max(lStartMs + 20, min(lEndMs, lStartMs + 100))
+                        effectText += "{\\alpha&H00&\\t(\(lStartMs),\(fadeEnd),\\alpha&HA0&)}\(char)"
+                    }
                 }
 
                 effectText += " "

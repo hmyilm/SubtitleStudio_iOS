@@ -7,11 +7,16 @@ import Foundation
 // kalin: ASS stilindeki Bold bayrağı. Yalnız gerçekten kalın kesimi olan fontlarda açılır;
 //        her fontta açık olursa libass kalın kesimi olmayan fontları YAPAY kalınlaştırır ve
 //        gömülen yazı, uygulamadaki ön izlemeden farklı (font değişmiş gibi) görünür.
+// bitisik: El yazısı gibi harfleri birbirine BAĞLI çizilen fontlar. Bu fontlarda harf
+//        başına ayrı ASS etiket bloğu, libass'ın harfi komşularından ayrı şekillendirmesine
+//        yol açar: animasyon sırasında harf bağları kopup harf anlık "normal" forma döner.
+//        Bu yüzden bitişik fontlarda soluklaşma kelime bütünü olarak uygulanır.
 struct FontOption: Identifiable, Hashable {
     let psName: String
     let display: String
     let assFamily: String
     let kalin: Bool
+    var bitisik: Bool = false
     var id: String { psName }
 }
 
@@ -23,10 +28,10 @@ enum FontCatalog {
         FontOption(psName: "Bangers-Regular", display: "Bangers", assFamily: "Bangers", kalin: false),
         FontOption(psName: "BebasNeue-Regular", display: "Bebas Neue", assFamily: "Bebas Neue", kalin: false),
         FontOption(psName: "Lato-Bold", display: "Lato", assFamily: "Lato", kalin: true),
-        FontOption(psName: "Pacifico-Regular", display: "Pacifico", assFamily: "Pacifico", kalin: false),
+        FontOption(psName: "Pacifico-Regular", display: "Pacifico", assFamily: "Pacifico", kalin: false, bitisik: true),
         FontOption(psName: "PermanentMarker-Regular", display: "Permanent Marker", assFamily: "Permanent Marker", kalin: false),
         FontOption(psName: "Poppins-Bold", display: "Poppins", assFamily: "Poppins", kalin: true),
-        FontOption(psName: "Lobster-Regular", display: "Lobster", assFamily: "Lobster", kalin: false),
+        FontOption(psName: "Lobster-Regular", display: "Lobster", assFamily: "Lobster", kalin: false, bitisik: true),
         FontOption(psName: "Creepster-Regular", display: "Creepster", assFamily: "Creepster", kalin: false),
         FontOption(psName: "AbrilFatface-Regular", display: "Abril Fatface", assFamily: "Abril Fatface", kalin: false),
         FontOption(psName: "AlfaSlabOne-Regular", display: "Alfa Slab One", assFamily: "Alfa Slab One", kalin: false),
@@ -52,11 +57,11 @@ enum FontCatalog {
         FontOption(psName: "GillSans-Bold", display: "Gill Sans", assFamily: "Gill Sans", kalin: true),
         FontOption(psName: "MarkerFelt-Wide", display: "Marker Felt", assFamily: "Marker Felt", kalin: true),
         FontOption(psName: "Noteworthy-Bold", display: "Noteworthy", assFamily: "Noteworthy", kalin: true),
-        FontOption(psName: "SnellRoundhand-Bold", display: "Snell Roundhand", assFamily: "Snell Roundhand", kalin: true),
+        FontOption(psName: "SnellRoundhand-Bold", display: "Snell Roundhand", assFamily: "Snell Roundhand", kalin: true, bitisik: true),
         FontOption(psName: "TimesNewRomanPS-BoldMT", display: "Times New Roman", assFamily: "Times New Roman", kalin: true),
         FontOption(psName: "TrebuchetMS-Bold", display: "Trebuchet", assFamily: "Trebuchet MS", kalin: true),
         FontOption(psName: "Verdana-Bold", display: "Verdana", assFamily: "Verdana", kalin: true),
-        FontOption(psName: "Zapfino", display: "Zapfino", assFamily: "Zapfino", kalin: false)
+        FontOption(psName: "Zapfino", display: "Zapfino", assFamily: "Zapfino", kalin: false, bitisik: true)
     ]
 
     static let hepsi: [FontOption] = gomulu + sistem
