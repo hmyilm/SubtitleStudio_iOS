@@ -59,6 +59,38 @@ class VideoProcessor: ObservableObject {
     // Model bir kez yüklenir ve sonraki analizlerde tekrar kullanılır (her seferinde yeniden yüklemek çok yavaştır)
     private var cachedWhisperKit: WhisperKit?
 
+    // Model tercih sırası: large-v3-turbo'nun 626 MB'lık nicelenmiş hali Türkçe'de
+    // (özellikle şarkı/türkü sözlerinde) small'dan ÇOK daha isabetlidir ve boyutu
+    // small (~500 MB) ile hemen hemen aynıdır. İndirilemez veya cihaz kaldıramazsa
+    // sıradaki modele düşülür; small en garantili yedektir.
+    private let modelAdaylari = [
+        "openai_whisper-large-v3-v20240930_626MB",
+        "openai_whisper-small"
+    ]
+
+    // Aday listesindeki ilk çalışan modeli indirir ve yükler
+    private func enIyiModeliYukle(downloadProgress: @escaping (Double) -> Void) async throws -> WhisperKit {
+        var sonHata: Error?
+        for aday in modelAdaylari {
+            do {
+                let modelFolder = try await WhisperKit.download(
+                    variant: aday,
+                    progressCallback: { progress in
+                        downloadProgress(progress.fractionCompleted)
+                    }
+                )
+                downloadProgress(1.0)
+
+                let config = WhisperKitConfig(modelFolder: modelFolder.path)
+                return try await WhisperKit(config)
+            } catch {
+                print("Model '\(aday)' yüklenemedi, sıradakine geçiliyor: \(error.localizedDescription)")
+                sonHata = error
+            }
+        }
+        throw sonHata ?? NSError(domain: "VideoProcessor", code: -1, userInfo: [NSLocalizedDescriptionKey: "Hiçbir yapay zeka modeli yüklenemedi."])
+    }
+
     // 2. Yapay Zeka WhisperKit (CoreML) ile Sesi Metne Çevirme (Python hassasiyetinde kelime kelime zamanlama)
     // downloadProgress: model ilk kez indirilirken 0.0-1.0 arası ilerleme bildirir
     func runSpeechRecognition(audioURL: URL, downloadProgress: @escaping (Double) -> Void, completion: @escaping ([WordTimestamp], String?) -> Void) {
@@ -70,19 +102,7 @@ class VideoProcessor: ObservableObject {
                 if let cached = self.cachedWhisperKit {
                     whisperKit = cached
                 } else {
-                    // "small" modeli: varsayılan tiny/base modellere göre Türkçe'de çok daha
-                    // isabetli sonuç verir. İlk kullanımda ~500 MB indirilir ve cihazda saklanır.
-                    // Önce indirme adımı (ilerleme geri bildirimli); model zaten indirilmişse hızlıca geçer.
-                    let modelFolder = try await WhisperKit.download(
-                        variant: "openai_whisper-small",
-                        progressCallback: { progress in
-                            downloadProgress(progress.fractionCompleted)
-                        }
-                    )
-                    downloadProgress(1.0)
-
-                    let config = WhisperKitConfig(modelFolder: modelFolder.path)
-                    whisperKit = try await WhisperKit(config)
+                    whisperKit = try await self.enIyiModeliYukle(downloadProgress: downloadProgress)
                     self.cachedWhisperKit = whisperKit
                 }
 

@@ -299,7 +299,7 @@ struct ContentView: View {
 
             DispatchQueue.main.async {
                 self.processingStage = .transcribing
-                self.statusMessage = "Yapay Zeka sözleri analiz ediyor (İlk kullanımda ~500 MB model indirilir, Wi-Fi önerilir)..."
+                self.statusMessage = "Yapay Zeka sözleri analiz ediyor (İlk kullanımda ~600 MB model indirilir, Wi-Fi önerilir)..."
             }
 
             VideoProcessor.shared.runSpeechRecognition(audioURL: audioURL, downloadProgress: { fraction in
