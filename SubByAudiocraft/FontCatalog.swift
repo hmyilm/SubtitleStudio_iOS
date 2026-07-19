@@ -8,9 +8,10 @@ import Foundation
 //        her fontta açık olursa libass kalın kesimi olmayan fontları YAPAY kalınlaştırır ve
 //        gömülen yazı, uygulamadaki ön izlemeden farklı (font değişmiş gibi) görünür.
 // bitisik: El yazısı gibi harfleri birbirine BAĞLI çizilen fontlar. Bu fontlarda harf
-//        başına ayrı ASS etiket bloğu, libass'ın harfi komşularından ayrı şekillendirmesine
-//        yol açar: animasyon sırasında harf bağları kopup harf anlık "normal" forma döner.
-//        Bu yüzden bitişik fontlarda soluklaşma kelime bütünü olarak uygulanır.
+//        başına ayrı ASS etiket bloğu, animasyon sırasında harf bağlarını/konturu koparıp
+//        harfi anlık "normal" forma döndürür. Çözüm iki katman hilesi (VideoProcessor.
+//        generateASS): altta etiketsiz BİTİŞİK soluk kopya (hiç bozulmaz), üstte harfleri
+//        sırası geldikçe tam saydama ERİYEN opak kopya — harf harf his korunur.
 struct FontOption: Identifiable, Hashable {
     let psName: String
     let display: String

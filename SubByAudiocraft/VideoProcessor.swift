@@ -219,9 +219,10 @@ class VideoProcessor: ObservableObject {
         // uyguluyor ve gömülen yazı ön izlemedekinden farklı ("font değişmiş gibi") görünüyordu.
         let boldFlag = (FontCatalog.secenek(fontName)?.kalin ?? fontName.contains("Bold")) ? -1 : 0
 
-        // Bitişik (el yazısı) fontlarda soluklaşma harf harf değil kelime bütünü uygulanır:
-        // harf başına ayrı etiket bloğu, animasyon sırasında harf bağlarını koparıp harfi
-        // anlık "normal" (bağlantısız) forma döndürüyordu.
+        // Bitişik (el yazısı) fontlarda harf başına etiket bloğu, animasyon sırasında harf
+        // bağlarını/konturu koparıp harfi "normal" gösteriyordu. Çözüm iki katman hilesi:
+        // altta etiketsiz BİTİŞİK soluk kopya (hiç bozulmaz), üstte harf harf tam saydama
+        // ERİYEN opak kopya. Harf harf soluklaşma hissi korunur, yazı hep bitişik görünür.
         let bitisikFont = FontCatalog.secenek(fontName)?.bitisik ?? false
 
         var assContent = """
@@ -293,7 +294,8 @@ class VideoProcessor: ObservableObject {
             if segEnd < segStart + 0.2 { segEnd = segStart + 0.2 }
             cursor = segEnd
 
-            var effectText = ""
+            var effectText = ""   // normal fontlar: tek katman; bitişik fontlar: üstteki eriyen katman
+            var plainText = ""    // bitişik fontlar: alt katmanın etiketsiz tam metni
             for word in seg.group {
                 // ASS formatını bozabilecek özel karakterleri temizle ({, }, \ ve satır sonları)
                 let cleanText = word.text
@@ -308,30 +310,36 @@ class VideoProcessor: ObservableObject {
                 let wordStart = max(segStart, word.start)
                 let wordEnd = max(wordStart + 0.05, word.end)
 
-                if bitisikFont {
-                    // Kelimenin tamamı tek etiket bloğunda: kelime içinde etiket sınırı
-                    // olmadığından harf bağları hiçbir karede kopamaz.
-                    let wStartMs = Int((wordStart - segStart) * 1000)
-                    let wEndMs = Int((wordEnd - segStart) * 1000)
-                    let fadeEnd = max(wStartMs + 20, min(wEndMs, wStartMs + 250))
-                    effectText += "{\\alpha&H00&\\t(\(wStartMs),\(fadeEnd),\\alpha&HA0&)}\(cleanText)"
-                } else {
-                    let chars = Array(cleanText)
-                    let letterDur = (wordEnd - wordStart) / Double(chars.count)
+                let chars = Array(cleanText)
+                let letterDur = (wordEnd - wordStart) / Double(chars.count)
 
-                    for (i, char) in chars.enumerated() {
-                        let lStartMs = Int((wordStart + Double(i) * letterDur - segStart) * 1000)
-                        let lEndMs = Int((wordStart + Double(i + 1) * letterDur - segStart) * 1000)
-                        let fadeEnd = max(lStartMs + 20, min(lEndMs, lStartMs + 100))
-                        effectText += "{\\alpha&H00&\\t(\(lStartMs),\(fadeEnd),\\alpha&HA0&)}\(char)"
-                    }
+                // Bitişik fontta üst katman harfi TAM SAYDAMA (&HFF&) erir — alttaki soluk
+                // bitişik kopya belirir. Normal fontta harf doğrudan yarı saydama (&HA0&) iner.
+                let hedefAlpha = bitisikFont ? "FF" : "A0"
+
+                for (i, char) in chars.enumerated() {
+                    let lStartMs = Int((wordStart + Double(i) * letterDur - segStart) * 1000)
+                    let lEndMs = Int((wordStart + Double(i + 1) * letterDur - segStart) * 1000)
+                    let fadeEnd = max(lStartMs + 20, min(lEndMs, lStartMs + 100))
+                    effectText += "{\\alpha&H00&\\t(\(lStartMs),\(fadeEnd),\\alpha&H\(hedefAlpha)&)}\(char)"
                 }
 
                 effectText += " "
+                plainText += cleanText + " "
             }
 
             if effectText.trimmingCharacters(in: .whitespaces).isEmpty { continue }
-            assContent += "Dialogue: 0,\(formatASSTime(segStart)),\(formatASSTime(segEnd)),Default,,0,0,0,,\(effectText)\n"
+
+            if bitisikFont {
+                // İki katman: alttaki (Layer 0) etiketsiz satır libass'ta tek parça
+                // şekillenir — harf bağları ve kontur her karede bitişik kalır. Üstteki
+                // (Layer 1) opak kopyanın harfleri sırası geldikçe eriyip altı ortaya
+                // çıkarır. Farklı Layer değerleri üst üste çizilir, istifleme yapmaz.
+                assContent += "Dialogue: 0,\(formatASSTime(segStart)),\(formatASSTime(segEnd)),Default,,0,0,0,,{\\alpha&HA0&}\(plainText)\n"
+                assContent += "Dialogue: 1,\(formatASSTime(segStart)),\(formatASSTime(segEnd)),Default,,0,0,0,,\(effectText)\n"
+            } else {
+                assContent += "Dialogue: 0,\(formatASSTime(segStart)),\(formatASSTime(segEnd)),Default,,0,0,0,,\(effectText)\n"
+            }
         }
         
         let assURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".ass")
